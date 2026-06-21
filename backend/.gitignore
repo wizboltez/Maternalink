@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment (keep .env.example in repo)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*

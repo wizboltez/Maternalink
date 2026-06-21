@@ -1,0 +1,64 @@
+# =============================================================================
+# Maternalink — root .gitignore
+# =============================================================================
+
+# --- Dependencies ---
+node_modules/
+**/node_modules/
+
+# --- Environment & secrets (never commit) ---
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# --- Legacy app (deprecated — use frontend/ instead) ---
+frontend_old/
+
+# --- IDE & editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Logs & debug ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# --- Backend (TypeScript build output) ---
+backend/dist/
+backend/coverage/
+
+# --- Frontend (React Native) ---
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/.cxx/
+frontend/ios/build/
+frontend/ios/Pods/
+frontend/ios/DerivedData/
+frontend/.metro-health-check*
+
+# --- Testing ---
+coverage/
+*.lcov
+
+# --- Misc ---
+*.tsbuildinfo
+.cache/
+tmp/
+temp/

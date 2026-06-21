@@ -1,0 +1,164 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+// User Interface
+export interface IUser extends Document {
+  email: string;
+  passwordHash: string;
+  name: string;
+  role: 'mother' | 'doctor' | 'admin';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Pregnancy Profile Interface
+export interface IPregnancyProfile extends Document {
+  userId: mongoose.Types.ObjectId;
+  gestationalAgeWeeks: number;
+  dueDate: Date;
+  doctorName: string;
+  emergencyContact: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Device Interface
+export interface IDevice extends Document {
+  serialNumber: string;
+  name: string;
+  firmwareVersion: string;
+  batteryLevel: number;
+  capabilities: ('adc' | 'flex_percent' | 'intensity' | 'mpu6050' | 'temperature' | 'heart_rate' | 'emg')[];
+  status: 'online' | 'offline' | 'maintenance';
+  lastConnectedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Calibration Session Interface
+export interface ICalibrationSession extends Document {
+  userId: mongoose.Types.ObjectId;
+  deviceId: mongoose.Types.ObjectId;
+  flexMin: number;
+  flexMax: number;
+  baseline: number;
+  sensorNoise: number;
+  confidence: number; // 0 to 100
+  timestamp: Date;
+  status: 'success' | 'failed';
+}
+
+// Monitoring Session Interface
+export interface IMonitoringSession extends Document {
+  userId: mongoose.Types.ObjectId;
+  deviceId: mongoose.Types.ObjectId;
+  calibrationSessionId: mongoose.Types.ObjectId;
+  startTime: Date;
+  endTime?: Date;
+  status: 'active' | 'completed';
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Contraction Reading Interface
+export interface IContractionReading extends Document {
+  monitoringSessionId: mongoose.Types.ObjectId;
+  timestamp: Date;
+  rawAdc?: number;
+  flexPercent?: number;
+  intensity?: number;
+  duration?: number;
+  interval?: number;
+  frequency?: number; // contractions per hour
+  source: 'hardware' | 'manual' | 'hybrid';
+  isConfirmed: boolean;
+  isContraction: boolean;
+  phase: 'none' | 'rise' | 'peak' | 'fall';
+}
+
+// --- SCHEMAS ---
+
+const UserSchema = new Schema<IUser>(
+  {
+    email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
+    passwordHash: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    role: { type: String, enum: ['mother', 'doctor', 'admin'], default: 'mother' },
+  },
+  { timestamps: true }
+);
+
+const PregnancyProfileSchema = new Schema<IPregnancyProfile>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
+    gestationalAgeWeeks: { type: Number, required: true, min: 0, max: 50 },
+    dueDate: { type: Date, required: true },
+    doctorName: { type: String, required: true, trim: true },
+    emergencyContact: { type: String, required: true, trim: true },
+  },
+  { timestamps: true }
+);
+
+const DeviceSchema = new Schema<IDevice>(
+  {
+    serialNumber: { type: String, required: true, unique: true, index: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    firmwareVersion: { type: String, required: true, default: '1.0.0' },
+    batteryLevel: { type: Number, required: true, min: 0, max: 100, default: 100 },
+    capabilities: [{ type: String, enum: ['adc', 'flex_percent', 'intensity', 'mpu6050', 'temperature', 'heart_rate', 'emg'] }],
+    status: { type: String, enum: ['online', 'offline', 'maintenance'], default: 'offline' },
+    lastConnectedAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+const CalibrationSessionSchema = new Schema<ICalibrationSession>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  deviceId: { type: Schema.Types.ObjectId, ref: 'Device', required: true, index: true },
+  flexMin: { type: Number, required: true },
+  flexMax: { type: Number, required: true },
+  baseline: { type: Number, required: true },
+  sensorNoise: { type: Number, required: true },
+  confidence: { type: Number, required: true, min: 0, max: 100 },
+  timestamp: { type: Date, default: Date.now, index: true },
+  status: { type: String, enum: ['success', 'failed'], required: true },
+});
+
+const MonitoringSessionSchema = new Schema<IMonitoringSession>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    deviceId: { type: Schema.Types.ObjectId, ref: 'Device', required: true },
+    calibrationSessionId: { type: Schema.Types.ObjectId, ref: 'CalibrationSession', required: true },
+    startTime: { type: Date, required: true, default: Date.now, index: true },
+    endTime: { type: Date },
+    status: { type: String, enum: ['active', 'completed'], default: 'active' },
+    notes: { type: String },
+  },
+  { timestamps: true }
+);
+
+const ContractionReadingSchema = new Schema<IContractionReading>({
+  monitoringSessionId: { type: Schema.Types.ObjectId, ref: 'MonitoringSession', required: true, index: true },
+  timestamp: { type: Date, required: true, default: Date.now, index: true },
+  rawAdc: { type: Number },
+  flexPercent: { type: Number },
+  intensity: { type: Number },
+  duration: { type: Number },
+  interval: { type: Number },
+  frequency: { type: Number },
+  source: { type: String, enum: ['hardware', 'manual', 'hybrid'], required: true },
+  isConfirmed: { type: Boolean, default: false },
+  isContraction: { type: Boolean, default: false },
+  phase: { type: String, enum: ['none', 'rise', 'peak', 'fall'], default: 'none' },
+});
+
+// Compound index on session and timestamp for quick retrieval of time-series graphs
+ContractionReadingSchema.index({ monitoringSessionId: 1, timestamp: 1 });
+
+// Export Models
+export const User = mongoose.model<IUser>('User', UserSchema);
+export const PregnancyProfile = mongoose.model<IPregnancyProfile>('PregnancyProfile', PregnancyProfileSchema);
+export const Device = mongoose.model<IDevice>('Device', DeviceSchema);
+export const CalibrationSession = mongoose.model<ICalibrationSession>('CalibrationSession', CalibrationSessionSchema);
+export const MonitoringSession = mongoose.model<IMonitoringSession>('MonitoringSession', MonitoringSessionSchema);
+export const ContractionReading = mongoose.model<IContractionReading>('ContractionReading', ContractionReadingSchema);
