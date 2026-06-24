@@ -3,8 +3,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 // User Interface
 export interface IUser extends Document {
   email: string;
-  passwordHash: string;
+  password: string; // Hashed password, conforms to DB collection requirements
+  passwordHash?: string; // Virtual/getter for compatibility
   name: string;
+  age: number;
   role: 'mother' | 'doctor' | 'admin';
   createdAt: Date;
   updatedAt: Date;
@@ -13,12 +15,29 @@ export interface IUser extends Document {
 // Pregnancy Profile Interface
 export interface IPregnancyProfile extends Document {
   userId: mongoose.Types.ObjectId;
-  gestationalAgeWeeks: number;
-  dueDate: Date;
-  doctorName: string;
-  emergencyContact: string;
+  pregnancyWeek: number;
+  trimester: number;
+  expectedDeliveryDate: Date;
+  weight: number;
+  bloodGroup: string;
+  gestationalAgeWeeks: number; // Kept for backwards compatibility
+  dueDate: Date; // Kept for backwards compatibility
+  doctorName?: string; // Made optional for system integration
+  emergencyContact?: string; // Made optional for system integration
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Guidance Rule Interface
+export interface IGuidanceRule extends Document {
+  minWeek: number;
+  maxWeek: number;
+  nutritionTips: string[];
+  hydrationTips: string[];
+  exerciseTips: string[];
+  medicalTests: string[];
+  doctorVisits: string[];
+  precautions: string[];
 }
 
 // Device Interface
@@ -81,22 +100,51 @@ export interface IContractionReading extends Document {
 const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true },
+    password: { type: String, required: true },
     name: { type: String, required: true, trim: true },
+    age: { type: Number, required: true },
     role: { type: String, enum: ['mother', 'doctor', 'admin'], default: 'mother' },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+// Virtual for passwordHash compatibility
+UserSchema.virtual('passwordHash')
+  .get(function (this: IUser) {
+    return this.password;
+  })
+  .set(function (this: IUser, val: string) {
+    this.password = val;
+  });
 
 const PregnancyProfileSchema = new Schema<IPregnancyProfile>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
-    gestationalAgeWeeks: { type: Number, required: true, min: 0, max: 50 },
-    dueDate: { type: Date, required: true },
-    doctorName: { type: String, required: true, trim: true },
-    emergencyContact: { type: String, required: true, trim: true },
+    pregnancyWeek: { type: Number, required: true, min: 0, max: 50 },
+    trimester: { type: Number, required: true, min: 1, max: 3 },
+    expectedDeliveryDate: { type: Date, required: true },
+    weight: { type: Number, required: true },
+    bloodGroup: { type: String, required: true, trim: true },
+    // Compatibility fields
+    gestationalAgeWeeks: { type: Number, default: 0 },
+    dueDate: { type: Date, default: Date.now },
+    doctorName: { type: String, default: 'Not specified', trim: true },
+    emergencyContact: { type: String, default: 'Not specified', trim: true },
   },
   { timestamps: true }
+);
+
+const GuidanceRuleSchema = new Schema<IGuidanceRule>(
+  {
+    minWeek: { type: Number, required: true, index: true },
+    maxWeek: { type: Number, required: true, index: true },
+    nutritionTips: [{ type: String, required: true }],
+    hydrationTips: [{ type: String, required: true }],
+    exerciseTips: [{ type: String, required: true }],
+    medicalTests: [{ type: String, required: true }],
+    doctorVisits: [{ type: String, required: true }],
+    precautions: [{ type: String, required: true }],
+  }
 );
 
 const DeviceSchema = new Schema<IDevice>(
@@ -158,6 +206,7 @@ ContractionReadingSchema.index({ monitoringSessionId: 1, timestamp: 1 });
 // Export Models
 export const User = mongoose.model<IUser>('User', UserSchema);
 export const PregnancyProfile = mongoose.model<IPregnancyProfile>('PregnancyProfile', PregnancyProfileSchema);
+export const GuidanceRule = mongoose.model<IGuidanceRule>('GuidanceRule', GuidanceRuleSchema);
 export const Device = mongoose.model<IDevice>('Device', DeviceSchema);
 export const CalibrationSession = mongoose.model<ICalibrationSession>('CalibrationSession', CalibrationSessionSchema);
 export const MonitoringSession = mongoose.model<IMonitoringSession>('MonitoringSession', MonitoringSessionSchema);

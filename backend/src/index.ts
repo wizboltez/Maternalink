@@ -40,7 +40,7 @@ const startServer = async () => {
     SocketServer.init(httpServer);
     console.log('🔌 Socket.IO Server initialized.');
 
-    httpServer.listen(env.PORT, () => {
+    httpServer.listen(env.PORT, '0.0.0.0', () => {
       console.log(`🚀 Maternalink Backend running in ${env.NODE_ENV} mode on port ${env.PORT}`);
     });
   } catch (error) {

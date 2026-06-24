@@ -8,14 +8,22 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  age: number;
   role: string;
 }
 
 export interface PregnancyProfile {
-  gestationalAgeWeeks: number;
-  dueDate: string;
-  doctorName: string;
-  emergencyContact: string;
+  id?: string;
+  userId?: string;
+  pregnancyWeek: number;
+  trimester: number;
+  expectedDeliveryDate: string;
+  weight: number;
+  bloodGroup: string;
+  gestationalAgeWeeks?: number; // Backwards compatibility
+  dueDate?: string; // Backwards compatibility
+  doctorName?: string; // Backwards compatibility
+  emergencyContact?: string; // Backwards compatibility
 }
 
 interface AuthContextValue {
@@ -27,16 +35,14 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setProfile: React.Dispatch<React.SetStateAction<PregnancyProfile | null>>;
 }
 
 export interface RegisterPayload {
   email: string;
   password: string;
   name: string;
-  gestationalAgeWeeks: number;
-  dueDate: string;
-  doctorName: string;
-  emergencyContact: string;
+  age: number;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -47,9 +53,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshProfile = useCallback(async () => {
-    const data = await contractionApi.getProfile();
-    setUser(data.user);
-    setProfile(data.profile);
+    try {
+      const data = await contractionApi.getProfile();
+      setUser(data.user);
+      setProfile(data.profile);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -81,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await contractionApi.register(payload);
     await AsyncStorage.setItem(TOKEN_KEY, data.token);
     setUser(data.user);
-    setProfile(data.profile);
+    setProfile(data.profile); // Will be null initially
   };
 
   const logout = async () => {
@@ -102,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         refreshProfile,
+        setProfile,
       }}
     >
       {children}

@@ -20,56 +20,81 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     ]);
   };
 
+  const getTrimesterText = (tri: number) => {
+    if (tri === 1) return '1st Trimester (Weeks 1-13)';
+    if (tri === 2) return '2nd Trimester (Weeks 14-27)';
+    return '3rd Trimester (Weeks 28-42+)';
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Heading style={styles.title}>My Profile</Heading>
-        <BodyText style={styles.subtitle}>Account and care preferences</BodyText>
+        <Heading style={styles.title}>My Settings</Heading>
+        <BodyText style={styles.subtitle}>Account and pregnancy information</BodyText>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Card style={styles.card}>
-          <Subheading style={styles.cardTitle}>Account</Subheading>
+          <Subheading style={styles.cardTitle}>Account Settings</Subheading>
+          
           <BodyText style={styles.rowLabel}>Name</BodyText>
           <BodyText style={styles.rowValue}>{user?.name}</BodyText>
+          
           <BodyText style={styles.rowLabel}>Email</BodyText>
           <BodyText style={styles.rowValue}>{user?.email}</BodyText>
+
+          <BodyText style={styles.rowLabel}>Age</BodyText>
+          <BodyText style={styles.rowValue}>{user?.age} years old</BodyText>
         </Card>
 
-        {profile && (
+        {profile ? (
+          <Card style={styles.card}>
+            <View style={styles.profileHeader}>
+              <Subheading style={styles.cardTitle}>Pregnancy Profile</Subheading>
+              <Button
+                title="Edit Info"
+                variant="outline"
+                onPress={() => navigation.navigate('PregnancyProfile', { isEdit: true })}
+                style={styles.editBtn}
+              />
+            </View>
+            
+            <BodyText style={styles.rowLabel}>Pregnancy Week</BodyText>
+            <BodyText style={styles.rowValue}>Week {profile.pregnancyWeek}</BodyText>
+
+            <BodyText style={styles.rowLabel}>Trimester</BodyText>
+            <BodyText style={styles.rowValue}>{getTrimesterText(profile.trimester)}</BodyText>
+            
+            <BodyText style={styles.rowLabel}>Expected Delivery Date</BodyText>
+            <BodyText style={styles.rowValue}>
+              {new Date(profile.expectedDeliveryDate).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </BodyText>
+            
+            <BodyText style={styles.rowLabel}>Current Weight</BodyText>
+            <BodyText style={styles.rowValue}>{profile.weight} kg</BodyText>
+
+            <BodyText style={styles.rowLabel}>Blood Group</BodyText>
+            <BodyText style={styles.rowValue}>{profile.bloodGroup}</BodyText>
+          </Card>
+        ) : (
           <Card style={styles.card}>
             <Subheading style={styles.cardTitle}>Pregnancy Profile</Subheading>
-            <BodyText style={styles.rowLabel}>Gestational Age</BodyText>
-            <BodyText style={styles.rowValue}>{profile.gestationalAgeWeeks} weeks</BodyText>
-            <BodyText style={styles.rowLabel}>Due Date</BodyText>
-            <BodyText style={styles.rowValue}>
-              {new Date(profile.dueDate).toLocaleDateString()}
-            </BodyText>
-            <BodyText style={styles.rowLabel}>Doctor</BodyText>
-            <BodyText style={styles.rowValue}>{profile.doctorName}</BodyText>
-            <BodyText style={styles.rowLabel}>Emergency Contact</BodyText>
-            <BodyText style={styles.rowValue}>{profile.emergencyContact}</BodyText>
+            <BodyText style={styles.rowValue}>No profile configured yet.</BodyText>
+            <Button
+              title="Set Up Profile"
+              onPress={() => navigation.navigate('PregnancyProfile', { isEdit: false })}
+              style={styles.setupBtn}
+            />
           </Card>
         )}
 
-        <Card style={styles.card}>
-          <Subheading style={styles.cardTitle}>App Settings</Subheading>
-          <Button
-            title="Bluetooth & Monitoring Settings"
-            variant="outline"
-            onPress={() => navigation.navigate('ContractionMonitoring', { screen: 'Settings' })}
-            style={styles.settingBtn}
-          />
-          <Button
-            title="Contraction Monitoring Settings"
-            variant="outline"
-            onPress={() => navigation.navigate('ContractionMonitoring', { screen: 'Settings' })}
-            style={styles.settingBtn}
-          />
-        </Card>
-
         <Button title="Sign Out" variant="danger" onPress={handleLogout} style={styles.logoutBtn} />
-        <Caption style={styles.version}>Maternalink v1.0.0</Caption>
+        
+        <Caption style={styles.version}>Maternalink Guidance System v1.0.0</Caption>
       </ScrollView>
     </View>
   );
@@ -80,12 +105,22 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Theme.spacing.xl, paddingTop: Theme.spacing.xxl, paddingBottom: Theme.spacing.md },
   title: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs },
-  scroll: { padding: Theme.spacing.xl, paddingBottom: 80 },
+  scroll: { padding: Theme.spacing.xl, paddingBottom: 100 },
   card: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.md },
-  cardTitle: { color: Theme.colors.text, marginBottom: Theme.spacing.md, borderBottomWidth: 1, borderBottomColor: Theme.colors.divider, paddingBottom: Theme.spacing.sm },
+  cardTitle: { color: Theme.colors.text, fontWeight: '700' },
+  profileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+    paddingBottom: Theme.spacing.sm,
+    marginBottom: Theme.spacing.sm,
+  },
   rowLabel: { color: Theme.colors.textMuted, fontSize: Theme.typography.sizes.xs, marginTop: Theme.spacing.sm },
-  rowValue: { color: Theme.colors.text, marginTop: 2 },
-  settingBtn: { marginTop: Theme.spacing.sm },
+  rowValue: { color: Theme.colors.text, marginTop: 2, fontWeight: '500' },
+  editBtn: { paddingVertical: 2, minHeight: 30 },
+  setupBtn: { marginTop: Theme.spacing.md },
   logoutBtn: { marginTop: Theme.spacing.md },
   version: { textAlign: 'center', marginTop: Theme.spacing.lg, marginBottom: Theme.spacing.xxl },
 });

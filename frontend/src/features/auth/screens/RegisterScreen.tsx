@@ -11,20 +11,18 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [gestationalWeeks, setGestationalWeeks] = useState('28');
-  const [dueDate, setDueDate] = useState('');
-  const [doctorName, setDoctorName] = useState('');
-  const [emergencyContact, setEmergencyContact] = useState('');
+  const [age, setAge] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    const weeks = parseInt(gestationalWeeks, 10);
-    if (!name.trim() || !email.trim() || password.length < 6 || isNaN(weeks)) {
-      Alert.alert('Invalid Form', 'Please fill in all required fields. Password must be at least 6 characters.');
+    const ageNum = parseInt(age, 10);
+    if (!name.trim() || !email.trim() || password.length < 6 || isNaN(ageNum)) {
+      Alert.alert('Invalid Form', 'Please fill in all required fields. Age must be a number, and password must be at least 6 characters.');
       return;
     }
-    if (!dueDate) {
-      Alert.alert('Due Date Required', 'Please enter your expected due date (YYYY-MM-DD).');
+
+    if (ageNum < 15 || ageNum > 60) {
+      Alert.alert('Invalid Age', 'Age must be between 15 and 60 years.');
       return;
     }
 
@@ -34,10 +32,7 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
-        gestationalAgeWeeks: weeks,
-        dueDate,
-        doctorName: doctorName.trim() || 'Not specified',
-        emergencyContact: emergencyContact.trim() || 'Not specified',
+        age: ageNum,
       });
     } catch (err: any) {
       Alert.alert('Registration Failed', err.response?.data?.error || 'Unable to create account.');
@@ -53,29 +48,48 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <Heading style={styles.title}>Create Account</Heading>
-        <BodyText style={styles.subtitle}>Set up your maternal health profile to get started.</BodyText>
+        <BodyText style={styles.subtitle}>Sign up to access maternal care and personalized guidance.</BodyText>
 
         <Card style={styles.formCard}>
           <Caption style={styles.label}>Full Name *</Caption>
-          <TextInput value={name} onChangeText={setName} style={styles.input} placeholder="Your name" placeholderTextColor={Theme.colors.textMuted} />
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+            placeholder="e.g. Jane Doe"
+            placeholderTextColor={Theme.colors.textMuted}
+          />
 
           <Caption style={styles.label}>Email *</Caption>
-          <TextInput value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" style={styles.input} />
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+            placeholder="jane@example.com"
+            placeholderTextColor={Theme.colors.textMuted}
+          />
 
-          <Caption style={styles.label}>Password *</Caption>
-          <TextInput value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
+          <Caption style={styles.label}>Password (min 6 characters) *</Caption>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={styles.input}
+            placeholder="••••••••"
+            placeholderTextColor={Theme.colors.textMuted}
+          />
 
-          <Caption style={styles.label}>Gestational Age (weeks) *</Caption>
-          <TextInput value={gestationalWeeks} onChangeText={setGestationalWeeks} keyboardType="number-pad" style={styles.input} />
-
-          <Caption style={styles.label}>Due Date (YYYY-MM-DD) *</Caption>
-          <TextInput value={dueDate} onChangeText={setDueDate} placeholder="2026-09-15" placeholderTextColor={Theme.colors.textMuted} style={styles.input} />
-
-          <Caption style={styles.label}>Attending Doctor</Caption>
-          <TextInput value={doctorName} onChangeText={setDoctorName} style={styles.input} />
-
-          <Caption style={styles.label}>Emergency Contact</Caption>
-          <TextInput value={emergencyContact} onChangeText={setEmergencyContact} keyboardType="phone-pad" style={styles.input} />
+          <Caption style={styles.label}>Age *</Caption>
+          <TextInput
+            value={age}
+            onChangeText={setAge}
+            keyboardType="number-pad"
+            style={styles.input}
+            placeholder="e.g. 28"
+            placeholderTextColor={Theme.colors.textMuted}
+          />
 
           <Button title="Create Account" onPress={handleRegister} loading={loading} style={styles.submitBtn} />
         </Card>

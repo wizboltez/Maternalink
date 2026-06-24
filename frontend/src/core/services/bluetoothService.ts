@@ -40,14 +40,19 @@ function decodeBleValue(base64: string): string {
 }
 
 class BluetoothService {
-  private manager: BleManager;
+  private manager: BleManager | null = null;
   private connectedDevice: Device | null = null;
   private telemetrySubscription: { remove: () => void } | null = null;
   private onTelemetry: TelemetryCallback | null = null;
   private onConnectionChange: ConnectionCallback | null = null;
 
   constructor() {
-    this.manager = new BleManager();
+    try {
+      this.manager = new BleManager();
+    } catch (e) {
+      console.warn('BluetoothService: Native BleManager not available. Bluetooth features will be disabled (fallback mode enabled for Expo Go).', e);
+      this.manager = null;
+    }
   }
 
   setTelemetryCallback(cb: TelemetryCallback | null) {
@@ -83,14 +88,22 @@ class BluetoothService {
   }
 
   async isBluetoothEnabled(): Promise<boolean> {
-    const state = await this.manager.state();
-    return state === State.PoweredOn;
+    if (!this.manager) return false;
+    try {
+      const state = await this.manager.state();
+      return state === State.PoweredOn;
+    } catch {
+      return false;
+    }
   }
 
   async scanForDevices(
     onDeviceFound: (device: Device) => void,
     timeoutMs = 12000
   ): Promise<void> {
+    if (!this.manager) {
+      throw new Error('Bluetooth scan is not supported in this environment (Expo Go). Please run the native development build or record manually.');
+    }
     const enabled = await this.isBluetoothEnabled();
     if (!enabled) {
       throw new Error('Bluetooth is turned off. Please enable it in your device settings.');
@@ -104,12 +117,12 @@ class BluetoothService {
     return new Promise((resolve, reject) => {
       const discovered = new Set<string>();
 
-      this.manager.startDeviceScan(
+      this.manager!.startDeviceScan(
         [MATERNALINK_SERVICE_UUID],
         { allowDuplicates: false },
         (error, device) => {
           if (error) {
-            this.manager.stopDeviceScan();
+            this.manager!.stopDeviceScan();
             reject(error);
             return;
           }
@@ -131,7 +144,7 @@ class BluetoothService {
       );
 
       setTimeout(() => {
-        this.manager.stopDeviceScan();
+        this.manager!.stopDeviceScan();
         resolve();
       }, timeoutMs);
     });
@@ -226,7 +239,7 @@ class BluetoothService {
 
   destroy(): void {
     this.disconnect();
-    this.manager.destroy();
+    this.manager?.destroy();
   }
 }
 

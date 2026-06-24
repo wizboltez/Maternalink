@@ -5,10 +5,32 @@ export const registerSchema = z.object({
     email: z.string().email('Invalid email address format.'),
     password: z.string().min(6, 'Password must be at least 6 characters.'),
     name: z.string().min(2, 'Name is too short.'),
-    gestationalAgeWeeks: z.number().min(0).max(50),
-    dueDate: z.string().datetime({ message: 'Due date must be a valid ISO datetime.' }),
-    doctorName: z.string().min(2, 'Doctor name is required.'),
-    emergencyContact: z.string().min(5, 'Emergency contact is required.'),
+    age: z.number().min(15, 'Age must be at least 15.').max(60, 'Age must be at most 60.'),
+  }),
+});
+
+export const createProfileSchema = z.object({
+  body: z.object({
+    pregnancyWeek: z.number().min(1, 'Pregnancy week must be at least 1.').max(42, 'Pregnancy week must be at most 42.'),
+    expectedDeliveryDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Expected delivery date must be a valid date.',
+    }),
+    weight: z.number().positive('Weight must be a positive number.'),
+    bloodGroup: z.string().min(1, 'Blood group is required.'),
+  }),
+});
+
+export const updateProfileSchema = z.object({
+  params: z.object({
+    id: z.string().length(24, 'Invalid profile ID format.'),
+  }),
+  body: z.object({
+    pregnancyWeek: z.number().min(1).max(42).optional(),
+    expectedDeliveryDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Expected delivery date must be a valid date.',
+    }).optional(),
+    weight: z.number().positive().optional(),
+    bloodGroup: z.string().optional(),
   }),
 });
 

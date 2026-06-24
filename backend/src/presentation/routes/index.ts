@@ -3,6 +3,8 @@ import { AuthController } from '../controllers/AuthController';
 import { DeviceController } from '../controllers/DeviceController';
 import { CalibrationController } from '../controllers/CalibrationController';
 import { MonitoringController } from '../controllers/MonitoringController';
+import { PregnancyProfileController } from '../controllers/PregnancyProfileController';
+import { GuidanceController } from '../controllers/GuidanceController';
 import { authMiddleware, validate } from '../../infrastructure/web/middlewares';
 
 import {
@@ -14,6 +16,8 @@ import {
   saveCalibrationSchema,
   startSessionSchema,
   postReadingSchema,
+  createProfileSchema,
+  updateProfileSchema,
 } from './schemas';
 
 const router = Router();
@@ -22,6 +26,13 @@ const router = Router();
 router.post('/auth/register', validate(registerSchema), AuthController.register);
 router.post('/auth/login', validate(loginSchema), AuthController.login);
 router.get('/auth/profile', authMiddleware as any, AuthController.getProfile);
+
+// --- Pregnancy Profile Routes ---
+router.post('/profile', authMiddleware as any, validate(createProfileSchema), PregnancyProfileController.createProfile);
+router.put('/profile/:id', authMiddleware as any, validate(updateProfileSchema), PregnancyProfileController.updateProfile);
+
+// --- Guidance Routes ---
+router.get('/guidance/:userId', authMiddleware as any, GuidanceController.getGuidance);
 
 // --- Device Routes ---
 router.post('/device/sync', validate(syncDeviceSchema), DeviceController.registerDevice);

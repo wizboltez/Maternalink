@@ -4,13 +4,13 @@ import { Text } from 'react-native';
 import Theme from '../theme/theme';
 
 import MainHomeScreen from '../../features/dashboard/screens/MainHomeScreen';
-import HealthScreen from '../../features/health/screens/HealthScreen';
+import GuidanceScreen from '../../features/guidance/screens/GuidanceScreen';
 import ProfileScreen from '../../features/profile/screens/ProfileScreen';
 import ContractionMonitoringNavigator from './ContractionMonitoringNavigator';
 
 export type MainTabParamList = {
   Home: undefined;
-  Health: undefined;
+  Guidance: undefined;
   Monitoring: undefined;
   Profile: undefined;
 };
@@ -49,11 +49,11 @@ export const MainTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Health"
-        component={HealthScreen}
+        name="Guidance"
+        component={GuidanceScreen}
         options={{
-          tabBarLabel: 'Health',
-          tabBarIcon: ({ focused }) => <TabIcon label="🩺" focused={focused} />,
+          tabBarLabel: 'Guidance',
+          tabBarIcon: ({ focused }) => <TabIcon label="📋" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -68,8 +68,8 @@ export const MainTabNavigator: React.FC = () => {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ focused }) => <TabIcon label="👤" focused={focused} />,
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ focused }) => <TabIcon label="⚙️" focused={focused} />,
         }}
       />
     </Tab.Navigator>
