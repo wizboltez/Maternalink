@@ -1,16 +1,36 @@
 import { BleManager, Device, Characteristic, State } from 'react-native-ble-plx';
 import { PermissionsAndroid, Platform } from 'react-native';
 
-// Maternalink Smart Belt BLE identifiers (ESP32 firmware)
-export const MATERNALINK_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c5c6b0bf00';
-export const TELEMETRY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-export const BATTERY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
+// Maternalink Smart Belt BLE identifiers (must match ESP32 firmware)
+export const MATERNALINK_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+export const TELEMETRY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
+// Battery is read from the telemetry JSON payload (no separate characteristic)
+export const BATTERY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
 
 export interface BeltTelemetry {
+  // Existing fields
   rawAdc?: number;
   flexPercent?: number;
   intensity?: number;
   batteryLevel?: number;
+  // NEW — MAX30102 (Heart Rate / SpO2)
+  heartRate?: number;
+  irValue?: number;
+  redValue?: number;
+  // NEW — DS18B20 (Temperature)
+  temperature?: number;
+  // NEW — GSR Sensor
+  gsrRaw?: number;
+  // NEW — MPU6050 (Accelerometer + Gyroscope)
+  accelX?: number;
+  accelY?: number;
+  accelZ?: number;
+  gyroX?: number;
+  gyroY?: number;
+  gyroZ?: number;
+  // NEW — Dual Flex Sensors
+  flex1?: number;
+  flex2?: number;
 }
 
 type TelemetryCallback = (data: BeltTelemetry) => void;
@@ -117,8 +137,10 @@ class BluetoothService {
     return new Promise((resolve, reject) => {
       const discovered = new Set<string>();
 
+      // Scan without service UUID filter first — many ESP32 boards don't
+      // include the service UUID in their advertisement packets.
       this.manager!.startDeviceScan(
-        [MATERNALINK_SERVICE_UUID],
+        null,
         { allowDuplicates: false },
         (error, device) => {
           if (error) {
@@ -131,12 +153,19 @@ class BluetoothService {
           }
 
           const name = device.name || device.localName || '';
-          if (
+          const serviceUUIDs = device.serviceUUIDs || [];
+          const matchesName =
             name.toLowerCase().includes('maternalink') ||
             name.toLowerCase().includes('maternal') ||
             name.toLowerCase().includes('smb') ||
-            name.toLowerCase().includes('esp32')
-          ) {
+            name.toLowerCase().includes('esp32') ||
+            name.toLowerCase().includes('smart belt') ||
+            name.toLowerCase().includes('health');
+          const matchesUUID = serviceUUIDs.some(
+            (uuid: string) => uuid.toLowerCase() === MATERNALINK_SERVICE_UUID.toLowerCase()
+          );
+
+          if (matchesName || matchesUUID) {
             discovered.add(device.id);
             onDeviceFound(device);
           }
@@ -189,6 +218,20 @@ class BluetoothService {
         flexPercent: data.flexPercent ?? data.flex,
         intensity: data.intensity,
         batteryLevel: data.batteryLevel ?? data.battery,
+        // Extended sensor data
+        heartRate: data.heartRate ?? data.hr,
+        irValue: data.irValue ?? data.ir,
+        redValue: data.redValue ?? data.red,
+        temperature: data.temperature ?? data.temp,
+        gsrRaw: data.gsrRaw ?? data.gsr,
+        accelX: data.accelX ?? data.ax,
+        accelY: data.accelY ?? data.ay,
+        accelZ: data.accelZ ?? data.az,
+        gyroX: data.gyroX ?? data.gx,
+        gyroY: data.gyroY ?? data.gy,
+        gyroZ: data.gyroZ ?? data.gz,
+        flex1: data.flex1 ?? data.f1,
+        flex2: data.flex2 ?? data.f2,
       };
     } catch {
       return null;

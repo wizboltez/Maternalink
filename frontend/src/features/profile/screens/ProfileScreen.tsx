@@ -1,13 +1,25 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import { useAuth } from '../../../core/context/AuthContext';
+import { getIsOfflineMode, setOfflineMode } from '../../../core/config/api';
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile, logout } = useAuth();
+  const [offlineMode, setOfflineModeState] = useState(true);
+
+  useEffect(() => {
+    getIsOfflineMode().then(setOfflineModeState);
+  }, []);
+
+  const handleToggleOffline = async (val: boolean) => {
+    await setOfflineMode(val);
+    setOfflineModeState(val);
+    Alert.alert('Mode Changed', 'Please restart the app to apply the new mode fully.');
+  };
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -92,6 +104,17 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           </Card>
         )}
 
+        <Card style={styles.card}>
+          <Subheading style={styles.cardTitle}>App Settings</Subheading>
+          <View style={styles.switchRow}>
+            <View>
+              <BodyText style={styles.switchLabel}>Offline Demo Mode</BodyText>
+              <Caption style={styles.switchDesc}>Run entirely offline with mock data</Caption>
+            </View>
+            <Switch value={offlineMode} onValueChange={handleToggleOffline} trackColor={{ true: Theme.colors.primary }} />
+          </View>
+        </Card>
+
         <Button title="Sign Out" variant="danger" onPress={handleLogout} style={styles.logoutBtn} />
         
         <Caption style={styles.version}>Maternalink Guidance System v1.0.0</Caption>
@@ -122,6 +145,9 @@ const styles = StyleSheet.create({
   editBtn: { paddingVertical: 2, minHeight: 30 },
   setupBtn: { marginTop: Theme.spacing.md },
   logoutBtn: { marginTop: Theme.spacing.md },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Theme.spacing.md },
+  switchLabel: { color: Theme.colors.text, fontWeight: '500' },
+  switchDesc: { color: Theme.colors.textMuted },
   version: { textAlign: 'center', marginTop: Theme.spacing.lg, marginBottom: Theme.spacing.xxl },
 });
 

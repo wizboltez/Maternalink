@@ -7,11 +7,13 @@ import MainHomeScreen from '../../features/dashboard/screens/MainHomeScreen';
 import GuidanceScreen from '../../features/guidance/screens/GuidanceScreen';
 import ProfileScreen from '../../features/profile/screens/ProfileScreen';
 import ContractionMonitoringNavigator from './ContractionMonitoringNavigator';
+import MaternalHealthNavigator from './MaternalHealthNavigator';
 
 export type MainTabParamList = {
   Home: undefined;
   Guidance: undefined;
   Monitoring: undefined;
+  Vitals: undefined;
   Profile: undefined;
 };
 
@@ -62,6 +64,14 @@ export const MainTabNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Monitor',
           tabBarIcon: ({ focused }) => <TabIcon label="📡" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Vitals"
+        component={MaternalHealthNavigator}
+        options={{
+          tabBarLabel: 'Vitals',
+          tabBarIcon: ({ focused }) => <TabIcon label="❤️" focused={focused} />,
         }}
       />
       <Tab.Screen

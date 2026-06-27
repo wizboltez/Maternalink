@@ -5,6 +5,7 @@ import { CalibrationController } from '../controllers/CalibrationController';
 import { MonitoringController } from '../controllers/MonitoringController';
 import { PregnancyProfileController } from '../controllers/PregnancyProfileController';
 import { GuidanceController } from '../controllers/GuidanceController';
+import { HealthSyncController } from '../controllers/HealthSyncController';
 import { authMiddleware, validate } from '../../infrastructure/web/middlewares';
 
 import {
@@ -18,6 +19,7 @@ import {
   postReadingSchema,
   createProfileSchema,
   updateProfileSchema,
+  healthSyncSchema,
 } from './schemas';
 
 const router = Router();
@@ -54,5 +56,11 @@ router.get('/monitoring/session/:sessionId', authMiddleware as any, MonitoringCo
 // --- Reports & Export Routes ---
 router.get('/monitoring/export/pdf/:sessionId', authMiddleware as any, MonitoringController.exportPdf);
 router.get('/monitoring/export/csv/:sessionId', authMiddleware as any, MonitoringController.exportCsv);
+
+// --- Health Sync Routes ---
+router.post('/health/sync', authMiddleware as any, validate(healthSyncSchema), HealthSyncController.syncBatch);
+router.get('/health/history', authMiddleware as any, HealthSyncController.getHistory);
+router.get('/health/latest', authMiddleware as any, HealthSyncController.getLatest);
+router.get('/health/batch/:batchId', authMiddleware as any, HealthSyncController.getBatchDetails);
 
 export default router;

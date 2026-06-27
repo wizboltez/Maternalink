@@ -4,6 +4,7 @@ import voiceSpeechEngine from '../services/voiceSpeechEngine';
 import contractionApi from '../api/contractionApi';
 import bluetoothService from '../../../core/services/bluetoothService';
 import { SOCKET_URL } from '../../../core/config/api';
+import { ContractionAnalyzer } from '../../maternal-health/services/sensorProcessors';
 
 export interface ContractionEvent {
   timestamp: string;
@@ -19,6 +20,7 @@ export const useContractionMonitoring = (
   initialCalibrationConfidence = 100
 ) => {
   const [isConnected, setIsConnected] = useState(false);
+  const [isBleConnected, setIsBleConnected] = useState(bluetoothService.isConnected());
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
   const [currentReading, setCurrentReading] = useState<{
     rawAdc?: number;
@@ -74,7 +76,7 @@ export const useContractionMonitoring = (
       console.log('❌ Disconnected from monitoring socket.');
     });
 
-    // Ingest live reading update
+    // Ingest live reading update from socket (Online Mode)
     socket.on('reading_received', (reading: any) => {
       const { rawAdc, flexPercent, intensity, phase, isContraction, duration, interval, timestamp } = reading;
 
@@ -135,10 +137,25 @@ export const useContractionMonitoring = (
       voiceSpeechEngine.speak('monitoring_completed');
     });
 
-    // Forward BLE belt telemetry to backend when hardware is connected
+    // --- Offline Fallback & BLE Ingestion ---
+    const localAnalyzer = new ContractionAnalyzer();
+
+    // Listen to BLE Connection changes
+    setIsBleConnected(bluetoothService.isConnected());
+    bluetoothService.setConnectionCallback((connected, name) => {
+      setIsBleConnected(connected);
+      if (connected) {
+        voiceSpeechEngine.speak('device_connected');
+      } else {
+        voiceSpeechEngine.speak('device_disconnected');
+      }
+    });
+
+    // Forward telemetry to server if online, OR process locally if offline
     bluetoothService.setTelemetryCallback((telemetry) => {
-      if (socketRef.current?.connected && sessionId) {
-        socketRef.current.emit('hardware_reading', {
+      // 1. Online flow
+      if (socket.connected && sessionId) {
+        socket.emit('hardware_reading', {
           sessionId,
           rawAdc: telemetry.rawAdc,
           flexPercent: telemetry.flexPercent,
@@ -146,13 +163,60 @@ export const useContractionMonitoring = (
           batteryLevel: telemetry.batteryLevel,
         });
       }
+
+      // 2. Offline flow (runs directly on device without server)
+      if (!socket.connected) {
+        const rawFlex = telemetry.flexPercent ?? telemetry.flex1 ?? telemetry.flex2 ?? 0;
+        const result = localAnalyzer.process(rawFlex, undefined);
+
+        if (result) {
+          const timestamp = Date.now();
+          const dateStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const rawAdcVal = telemetry.rawAdc ?? Math.round(rawFlex * 10);
+
+          setCurrentReading({
+            rawAdc: rawAdcVal,
+            flexPercent: result.smoothedFlex,
+            intensity: result.intensity,
+            phase: result.phase,
+          });
+
+          setAdcBuffer((prev) => [...prev, rawAdcVal].slice(-40));
+          setFlexBuffer((prev) => [...prev, result.smoothedFlex].slice(-40));
+          setIntensityBuffer((prev) => [...prev, result.intensity].slice(-40));
+          setTimeLabels((prev) => [...prev, dateStr].slice(-40));
+
+          if (telemetry.batteryLevel != null) {
+            setBatteryLevel(telemetry.batteryLevel);
+          }
+
+          // Local voice guidance and contractions log
+          if (result.phase === 'rise' && lastPhaseRef.current === 'none') {
+            voiceSpeechEngine.speak('contraction_detected');
+          } else if (result.phase === 'none' && lastPhaseRef.current === 'fall') {
+            voiceSpeechEngine.speak('contraction_ended');
+
+            const event: ContractionEvent = {
+              timestamp: new Date().toLocaleTimeString(),
+              duration: result.duration,
+              intensity: result.intensity,
+              interval: result.interval || undefined,
+              isConfirmed: false,
+            };
+            setContractions((prev) => [event, ...prev]);
+            voiceSpeechEngine.speak('please_confirm_contraction');
+          }
+          lastPhaseRef.current = result.phase;
+        }
+      }
     });
 
     return () => {
       bluetoothService.setTelemetryCallback(null);
-      if (socketRef.current) {
-        socketRef.current.emit('leave_session', sessionId);
-        socketRef.current.disconnect();
+      bluetoothService.setConnectionCallback(null);
+      if (socket) {
+        socket.emit('leave_session', sessionId);
+        socket.disconnect();
       }
     };
   }, [sessionId, initialCalibrationConfidence]);
@@ -215,7 +279,7 @@ export const useContractionMonitoring = (
   };
 
   return {
-    isConnected,
+    isConnected: isConnected || isBleConnected,
     batteryLevel,
     currentReading,
     adcBuffer,

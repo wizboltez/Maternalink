@@ -101,3 +101,47 @@ export const postReadingSchema = z.object({
     isContraction: z.boolean().optional(),
   }),
 });
+
+export const healthSyncSchema = z.object({
+  body: z.object({
+    deviceId: z.string().min(1),
+    sessionStart: z.string().or(z.number()),
+    sessionEnd: z.string().or(z.number()),
+    readings: z.array(z.object({
+      timestamp: z.string().or(z.number()),
+      heartRate: z.number().optional(),
+      spO2: z.number().optional(),
+      temperature: z.number().optional(),
+      stressScore: z.number().optional(),
+      activity: z.enum(['lying', 'sitting', 'standing', 'walking', 'unknown']).optional(),
+      contractionActive: z.boolean().optional(),
+      contractionIntensity: z.number().optional(),
+      contractionDuration: z.number().optional(),
+      contractionInterval: z.number().optional(),
+      contractionFrequency: z.number().optional(),
+      flex1Raw: z.number().optional(),
+      flex2Raw: z.number().optional(),
+      accelMagnitude: z.number().optional(),
+      gsrRaw: z.number().optional(),
+      batteryLevel: z.number().optional(),
+    })).min(1),
+    alerts: z.array(z.object({
+      timestamp: z.string().or(z.number()),
+      type: z.string(),
+      value: z.number(),
+      message: z.string(),
+    })).optional().default([]),
+    summary: z.object({
+      avgHeartRate: z.number().optional(),
+      avgSpO2: z.number().optional(),
+      avgTemperature: z.number().optional(),
+      avgStressScore: z.number().optional(),
+      totalContractions: z.number().optional(),
+      avgContractionDuration: z.number().optional(),
+      avgContractionInterval: z.number().optional(),
+      dominantActivity: z.string().optional(),
+      fallsDetected: z.number().optional(),
+      sleepMinutes: z.number().optional(),
+    }).optional().default({}),
+  }),
+});

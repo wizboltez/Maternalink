@@ -211,3 +211,126 @@ export const Device = mongoose.model<IDevice>('Device', DeviceSchema);
 export const CalibrationSession = mongoose.model<ICalibrationSession>('CalibrationSession', CalibrationSessionSchema);
 export const MonitoringSession = mongoose.model<IMonitoringSession>('MonitoringSession', MonitoringSessionSchema);
 export const ContractionReading = mongoose.model<IContractionReading>('ContractionReading', ContractionReadingSchema);
+
+// Health Sync Reading Interface (sub-document)
+export interface IHealthSyncReading {
+  timestamp: Date;
+  heartRate?: number;
+  spO2?: number;
+  temperature?: number;
+  stressScore?: number;
+  activity?: 'lying' | 'sitting' | 'standing' | 'walking' | 'unknown';
+  contractionActive?: boolean;
+  contractionIntensity?: number;
+  contractionDuration?: number;
+  contractionInterval?: number;
+  contractionFrequency?: number;
+  flex1Raw?: number;
+  flex2Raw?: number;
+  accelMagnitude?: number;
+  gsrRaw?: number;
+  batteryLevel?: number;
+}
+
+// Health Alert Interface (sub-document)
+export interface IHealthAlert {
+  timestamp: Date;
+  type: string;
+  value: number;
+  message: string;
+}
+
+// Health Summary Interface (sub-document)
+export interface IHealthSummary {
+  avgHeartRate?: number;
+  avgSpO2?: number;
+  avgTemperature?: number;
+  avgStressScore?: number;
+  totalContractions?: number;
+  avgContractionDuration?: number;
+  avgContractionInterval?: number;
+  dominantActivity?: string;
+  fallsDetected?: number;
+  sleepMinutes?: number;
+}
+
+// Health Sync Batch Interface
+export interface IHealthSyncBatch extends Document {
+  userId: mongoose.Types.ObjectId;
+  deviceId: string;
+  syncTimestamp: Date;
+  sessionStart: Date;
+  sessionEnd: Date;
+  readings: IHealthSyncReading[];
+  alerts: IHealthAlert[];
+  summary: IHealthSummary;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const HealthSyncReadingSchema = new Schema<IHealthSyncReading>(
+  {
+    timestamp: { type: Date, required: true },
+    heartRate: { type: Number },
+    spO2: { type: Number },
+    temperature: { type: Number },
+    stressScore: { type: Number },
+    activity: { type: String, enum: ['lying', 'sitting', 'standing', 'walking', 'unknown'] },
+    contractionActive: { type: Boolean },
+    contractionIntensity: { type: Number },
+    contractionDuration: { type: Number },
+    contractionInterval: { type: Number },
+    contractionFrequency: { type: Number },
+    flex1Raw: { type: Number },
+    flex2Raw: { type: Number },
+    accelMagnitude: { type: Number },
+    gsrRaw: { type: Number },
+    batteryLevel: { type: Number },
+  },
+  { _id: false }
+);
+
+const HealthAlertSchema = new Schema<IHealthAlert>(
+  {
+    timestamp: { type: Date, required: true },
+    type: { type: String, required: true },
+    value: { type: Number, required: true },
+    message: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const HealthSummarySchema = new Schema<IHealthSummary>(
+  {
+    avgHeartRate: { type: Number },
+    avgSpO2: { type: Number },
+    avgTemperature: { type: Number },
+    avgStressScore: { type: Number },
+    totalContractions: { type: Number },
+    avgContractionDuration: { type: Number },
+    avgContractionInterval: { type: Number },
+    dominantActivity: { type: String },
+    fallsDetected: { type: Number },
+    sleepMinutes: { type: Number },
+  },
+  { _id: false }
+);
+
+const HealthSyncBatchSchema = new Schema<IHealthSyncBatch>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    deviceId: { type: String, required: true },
+    syncTimestamp: { type: Date, required: true, default: Date.now },
+    sessionStart: { type: Date, required: true },
+    sessionEnd: { type: Date, required: true },
+    readings: [HealthSyncReadingSchema],
+    alerts: [HealthAlertSchema],
+    summary: HealthSummarySchema,
+  },
+  { timestamps: true }
+);
+
+// Compound index for efficient per-user chronological queries
+HealthSyncBatchSchema.index({ userId: 1, syncTimestamp: -1 });
+
+export const HealthSyncBatch = mongoose.model<IHealthSyncBatch>('HealthSyncBatch', HealthSyncBatchSchema);
