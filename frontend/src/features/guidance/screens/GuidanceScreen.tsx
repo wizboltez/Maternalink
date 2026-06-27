@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Text, ActivityIndicator, FAB } from 'react-native-paper';
 import { useQuery } from '@tanstack/react-query';
 import Theme from '../../../core/theme/theme';
@@ -76,6 +76,8 @@ const GuidanceCard: React.FC<GuidanceCardProps> = ({ title, icon, items, status 
 
 export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile } = useAuth();
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth > 768;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['guidance', user?.id, profile?.pregnancyWeek],
@@ -131,7 +133,7 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         </ScrollView>
       ) : data ? (
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, isTablet && styles.scrollTablet]}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
         >
@@ -255,6 +257,11 @@ const styles = StyleSheet.create({
   scroll: {
     padding: Theme.spacing.lg,
     paddingBottom: 100, // Leave space for bottom tab bar
+  },
+  scrollTablet: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 800,
   },
   loadingContainer: {
     flex: 1,

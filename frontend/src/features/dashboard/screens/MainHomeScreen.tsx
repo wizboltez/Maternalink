@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -8,6 +8,8 @@ import { SosButton } from '../../../core/components/SosButton';
 
 export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile } = useAuth();
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
 
   const dueDate = profile?.dueDate
     ? new Date(profile.dueDate).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
@@ -30,7 +32,7 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, isTablet && styles.scrollTablet]}>
         <Card style={styles.heroCard}>
           <Subheading style={styles.heroTitle}>Your Pregnancy Journey</Subheading>
           <BodyText style={styles.heroText}>
@@ -105,6 +107,7 @@ const styles = StyleSheet.create({
   subtitle: { color: Theme.colors.textSecondary, marginTop: 2 },
   meta: { marginTop: 4, color: Theme.colors.accent },
   scroll: { padding: Theme.spacing.xl, paddingBottom: 80 },
+  scrollTablet: { alignSelf: 'center', width: '100%', maxWidth: 800 },
   heroCard: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.lg, backgroundColor: Theme.colors.primaryLight },
   heroTitle: { color: Theme.colors.primaryDark, marginBottom: Theme.spacing.sm },
   heroText: { color: Theme.colors.textSecondary, lineHeight: 20 },

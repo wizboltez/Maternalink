@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import Theme from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
+import { bluetoothService } from '../services/bluetoothService';
 
 import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
@@ -26,6 +27,13 @@ const AuthStack = createStackNavigator<AuthStackParamList>();
 export const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading, profile } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    if (!showSplash) {
+      // Request all permissions right when the app opens
+      bluetoothService.requestPermissions().catch(console.warn);
+    }
+  }, [showSplash]);
 
   if (isLoading || showSplash) {
     return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;

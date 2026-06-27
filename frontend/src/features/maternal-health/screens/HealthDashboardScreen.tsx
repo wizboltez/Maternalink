@@ -6,7 +6,7 @@ import {
   Text,
   Animated,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
@@ -26,10 +26,12 @@ const statusColor = (status: HealthStatus): string => {
   }
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - Theme.spacing.xl * 2 - Theme.spacing.md) / 2;
 
 const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
+  const cardWidth = isTablet ? 300 : (width - Theme.spacing.xl * 2 - Theme.spacing.md) / 2;
+
   // Demo state values
   const [heartRate] = useState(78);
   const [hrStatus] = useState<HealthStatus>('normal');
@@ -94,7 +96,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollTablet]}
       showsVerticalScrollIndicator={false}
     >
       {/* Top Bar */}
@@ -136,7 +138,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => navigation.navigate('HeartRateDetail')}
-          style={[styles.gridCard, { borderLeftColor: statusColor(hrStatus) }]}
+          style={[styles.gridCard, { borderLeftColor: statusColor(hrStatus), width: cardWidth }]}
         >
           <View style={styles.cardHeader}>
             <Text style={styles.cardEmoji}>❤️</Text>
@@ -154,7 +156,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => navigation.navigate('SpO2Detail')}
-          style={[styles.gridCard, { borderLeftColor: statusColor(spO2Status) }]}
+          style={[styles.gridCard, { borderLeftColor: statusColor(spO2Status), width: cardWidth }]}
         >
           <View style={styles.cardHeader}>
             <Text style={styles.cardEmoji}>🫁</Text>
@@ -170,7 +172,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => navigation.navigate('TemperatureDetail')}
-          style={[styles.gridCard, { borderLeftColor: statusColor(tempStatus) }]}
+          style={[styles.gridCard, { borderLeftColor: statusColor(tempStatus), width: cardWidth }]}
         >
           <View style={styles.cardHeader}>
             <Text style={styles.cardEmoji}>🌡️</Text>
@@ -186,7 +188,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => navigation.navigate('StressDetail')}
-          style={[styles.gridCard, { borderLeftColor: statusColor(stressStatus) }]}
+          style={[styles.gridCard, { borderLeftColor: statusColor(stressStatus), width: cardWidth }]}
         >
           <View style={styles.cardHeader}>
             <Text style={styles.cardEmoji}>🧠</Text>
@@ -218,7 +220,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
           onPress={() => navigation.navigate('ActivityDetail')}
           style={[
             styles.gridCard,
-            { borderLeftColor: fallDetected ? Theme.colors.danger : Theme.colors.success },
+            { borderLeftColor: fallDetected ? Theme.colors.danger : Theme.colors.success, width: cardWidth },
           ]}
         >
           <View style={styles.cardHeader}>
@@ -242,6 +244,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
             styles.gridCard,
             {
               borderLeftColor: contractionActive ? Theme.colors.warning : Theme.colors.success,
+              width: cardWidth
             },
           ]}
         >
@@ -305,6 +308,11 @@ const styles = StyleSheet.create({
     paddingTop: Theme.spacing.xxl,
     paddingBottom: Theme.spacing.xxxl,
   },
+  scrollTablet: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 900,
+  },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -352,7 +360,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   gridCard: {
-    width: CARD_WIDTH,
     backgroundColor: Theme.colors.cardBackground,
     borderRadius: Theme.borders.radius.lg,
     padding: Theme.spacing.lg,
