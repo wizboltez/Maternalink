@@ -7,6 +7,7 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { useAuth } from '../../../core/context/AuthContext';
 import guidanceApi from '../api/guidanceApi';
+import { SosButton } from '../../../core/components/SosButton';
 
 const { width } = Dimensions.get('window');
 
@@ -107,8 +108,11 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               Week {profile.pregnancyWeek} · {trimesterSuffix(profile.trimester)} Trimester
             </BodyText>
           </View>
-          <View style={styles.weekBadge}>
-            <Text style={styles.weekBadgeText}>W{profile.pregnancyWeek}</Text>
+          <View style={styles.headerRight}>
+            <SosButton />
+            <View style={styles.weekBadge}>
+              <Text style={styles.weekBadgeText}>W{profile.pregnancyWeek}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -227,6 +231,10 @@ const styles = StyleSheet.create({
   subtitle: {
     color: Theme.colors.textSecondary,
     marginTop: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   weekBadge: {
     backgroundColor: Theme.colors.primary,

@@ -6,6 +6,7 @@ import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import { useAuth } from '../../../core/context/AuthContext';
 import { getIsOfflineMode, setOfflineMode } from '../../../core/config/api';
+import { SosButton } from '../../../core/components/SosButton';
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile, logout } = useAuth();
@@ -41,8 +42,13 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Heading style={styles.title}>My Settings</Heading>
-        <BodyText style={styles.subtitle}>Account and pregnancy information</BodyText>
+        <View style={styles.headerRow}>
+          <View>
+            <Heading style={styles.title}>My Settings</Heading>
+            <BodyText style={styles.subtitle}>Account and pregnancy information</BodyText>
+          </View>
+          <SosButton />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -126,6 +132,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
   header: { paddingHorizontal: Theme.spacing.xl, paddingTop: Theme.spacing.xxl, paddingBottom: Theme.spacing.md },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs },
   scroll: { padding: Theme.spacing.xl, paddingBottom: 100 },

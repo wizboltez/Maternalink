@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import Theme from '../theme/theme';
+import { SosButton } from '../components/SosButton';
 
 import HealthDashboardScreen from '../../features/maternal-health/screens/HealthDashboardScreen';
 import HeartRateDetailScreen from '../../features/maternal-health/screens/HeartRateDetailScreen';
@@ -33,6 +34,7 @@ export const MaternalHealthNavigator = () => {
         },
         headerBackTitleVisible: false,
         cardStyle: { backgroundColor: Theme.colors.background },
+        headerRight: () => <SosButton />,
       }}
     >
       <Stack.Screen 

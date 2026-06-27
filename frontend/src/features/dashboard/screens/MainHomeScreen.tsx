@@ -4,6 +4,7 @@ import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
 import { useAuth } from '../../../core/context/AuthContext';
+import { SosButton } from '../../../core/components/SosButton';
 
 export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile } = useAuth();
@@ -15,8 +16,13 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   return (
     <View style={styles.container}>
       <View style={styles.headerSection}>
-        <Heading style={styles.title}>Maternalink</Heading>
-        <BodyText style={styles.subtitle}>Welcome back, {user?.name || 'there'}</BodyText>
+        <View style={styles.headerRow}>
+          <View>
+            <Heading style={styles.title}>Maternalink</Heading>
+            <BodyText style={styles.subtitle}>Welcome back, {user?.name || 'there'}</BodyText>
+          </View>
+          <SosButton />
+        </View>
         {profile && (
           <Caption style={styles.meta}>
             Week {profile.gestationalAgeWeeks} · Due {dueDate}
@@ -89,6 +95,11 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.cardBackground,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.divider,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: 2 },

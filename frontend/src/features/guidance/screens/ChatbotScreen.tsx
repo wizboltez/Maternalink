@@ -6,6 +6,7 @@ import { Heading, BodyText, Caption } from '../../../core/components/Typography'
 import { useAuth } from '../../../core/context/AuthContext';
 import guidanceApi, { ChatMessageResponse } from '../api/guidanceApi';
 import { useMaternalHealth } from '../../maternal-health/hooks/useMaternalHealth';
+import { SosButton } from '../../../core/components/SosButton';
 
 interface ChatMessage {
   id: string;
@@ -98,10 +99,13 @@ export const ChatbotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Heading style={styles.title}>AI Assistant</Heading>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Heading style={styles.title}>AI Assistant</Heading>
+        </View>
+        <SosButton />
       </View>
 
       <ScrollView 
@@ -157,12 +161,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: Theme.spacing.xxl + 10,
     paddingBottom: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.lg,
     backgroundColor: Theme.colors.cardBackground,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.divider,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backBtn: {
     padding: 8,

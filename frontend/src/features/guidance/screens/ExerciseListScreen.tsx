@@ -7,6 +7,7 @@ import { Card } from '../../../core/components/Card';
 import { useAuth } from '../../../core/context/AuthContext';
 import { useMaternalHealth } from '../../maternal-health/hooks/useMaternalHealth';
 import guidanceApi, { ExerciseRecommendationResponse } from '../api/guidanceApi';
+import { SosButton } from '../../../core/components/SosButton';
 
 export const ExerciseListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { profile } = useAuth();
@@ -46,10 +47,13 @@ export const ExerciseListScreen: React.FC<{ navigation: any }> = ({ navigation }
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Heading style={styles.title}>Recommended Exercises</Heading>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Heading style={styles.title}>Recommended Exercises</Heading>
+        </View>
+        <SosButton />
       </View>
 
       {loading ? (
@@ -124,12 +128,17 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: Theme.spacing.xxl + 10,
     paddingBottom: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.lg,
     backgroundColor: Theme.colors.cardBackground,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.divider,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backBtn: {
     padding: 8,
