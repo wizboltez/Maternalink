@@ -4,7 +4,7 @@ import { Text } from 'react-native';
 import Theme from '../theme/theme';
 
 import MainHomeScreen from '../../features/dashboard/screens/MainHomeScreen';
-import GuidanceScreen from '../../features/guidance/screens/GuidanceScreen';
+import GuidanceNavigator from './GuidanceNavigator';
 import ProfileScreen from '../../features/profile/screens/ProfileScreen';
 import ContractionMonitoringNavigator from './ContractionMonitoringNavigator';
 import MaternalHealthNavigator from './MaternalHealthNavigator';
@@ -52,7 +52,7 @@ export const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen
         name="Guidance"
-        component={GuidanceScreen}
+        component={GuidanceNavigator}
         options={{
           tabBarLabel: 'Guidance',
           tabBarIcon: ({ focused }) => <TabIcon label="📋" focused={focused} />,

@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Dimensions } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
+import { Text, ActivityIndicator, FAB } from 'react-native-paper';
 import { useQuery } from '@tanstack/react-query';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
@@ -73,7 +73,7 @@ const GuidanceCard: React.FC<GuidanceCardProps> = ({ title, icon, items, status 
   );
 };
 
-export const GuidanceScreen: React.FC = () => {
+export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile } = useAuth();
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -184,6 +184,21 @@ export const GuidanceScreen: React.FC = () => {
           </Caption>
         </ScrollView>
       ) : null}
+
+      <FAB
+        icon="chat-processing"
+        label="AI Chat"
+        style={styles.chatFab}
+        onPress={() => navigation.navigate('Chatbot')}
+        color="#FFF"
+      />
+      <FAB
+        icon="yoga"
+        label="Exercises"
+        style={styles.exerciseFab}
+        onPress={() => navigation.navigate('Exercises')}
+        color="#FFF"
+      />
     </View>
   );
 };
@@ -305,6 +320,20 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 16,
     paddingHorizontal: Theme.spacing.md,
+  },
+  chatFab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Theme.colors.primary,
+  },
+  exerciseFab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 60,
+    backgroundColor: '#378ADD',
   },
 });
 
