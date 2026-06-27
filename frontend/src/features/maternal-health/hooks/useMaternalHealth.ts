@@ -104,6 +104,8 @@ export const useMaternalHealth = () => {
   });
 
   const isProcessingRef = useRef(false);
+  const snapshotBufferRef = useRef<HealthSnapshot[]>([]);
+  const lastRefreshTimeRef = useRef<number>(Date.now());
 
   // Process incoming BLE telemetry
   const handleTelemetry = useCallback((telemetry: BeltTelemetry) => {
@@ -113,67 +115,87 @@ export const useMaternalHealth = () => {
     try {
       // Run through processing engine
       const snapshot = processingEngine.process(telemetry);
+      snapshotBufferRef.current.push(snapshot);
 
-      // Update vital signs state
-      if (snapshot.heartRate != null) {
-        setHeartRate(snapshot.heartRate);
-        setHeartRateStatus(snapshot.heartRateStatus);
-        setHeartRateHistory(prev => [...prev, snapshot.heartRate!].slice(-MAX_HISTORY_POINTS));
+      const now = Date.now();
+      // Clean up old entries (keep last 3 minutes max in buffer)
+      const threeMinsAgo = now - 180000;
+      snapshotBufferRef.current = snapshotBufferRef.current.filter(s => s.timestamp >= threeMinsAgo);
+
+      // Check if 2 minutes (120000 ms) have passed since last refresh
+      if (now - lastRefreshTimeRef.current >= 120000) {
+        lastRefreshTimeRef.current = now;
+
+        // Take entries from the last 1min 40sec (100 seconds)
+        const hundredSecsAgo = now - 100000;
+        const targetSnapshots = snapshotBufferRef.current.filter(s => s.timestamp >= hundredSecsAgo);
+
+        if (targetSnapshots.length > 0) {
+          // Calculate mean snapshot
+          const aggregated = computeAggregatedSnapshot(targetSnapshots);
+
+          // Update vital signs state
+          if (aggregated.heartRate != null) {
+            setHeartRate(aggregated.heartRate);
+            setHeartRateStatus(aggregated.heartRateStatus);
+            setHeartRateHistory(prev => [...prev, aggregated.heartRate!].slice(-MAX_HISTORY_POINTS));
+          }
+          if (aggregated.spO2 != null) {
+            setSpO2(aggregated.spO2);
+            setSpO2Status(aggregated.spO2Status);
+            setSpO2History(prev => [...prev, aggregated.spO2!].slice(-MAX_HISTORY_POINTS));
+          }
+          if (aggregated.temperature != null) {
+            setTemperature(aggregated.temperature);
+            setTemperatureStatus(aggregated.temperatureStatus);
+            setTemperatureHistory(prev => [...prev, aggregated.temperature!].slice(-MAX_HISTORY_POINTS));
+          }
+          if (aggregated.stressScore != null) {
+            setStressScore(aggregated.stressScore);
+            setStressStatus(aggregated.stressStatus);
+            setStressHistory(prev => [...prev, aggregated.stressScore!].slice(-MAX_HISTORY_POINTS));
+          }
+
+          // Update activity
+          setActivity(aggregated.activity);
+          setFallDetected(aggregated.fallDetected);
+          setIsSleeping(aggregated.isSleeping);
+
+          // Update contractions
+          setContractionActive(aggregated.contractionActive);
+          setContractionPhase(aggregated.contractionPhase);
+          setContractionIntensity(aggregated.contractionIntensity);
+          setContractionDuration(aggregated.contractionDuration);
+          setContractionInterval(aggregated.contractionInterval);
+          setContractionFrequency(aggregated.contractionFrequency);
+          setFlexHistory(prev => [...prev, aggregated.smoothedFlex].slice(-MAX_HISTORY_POINTS));
+
+          // Update battery
+          if (aggregated.batteryLevel != null) {
+            setBatteryLevel(aggregated.batteryLevel);
+          }
+
+          // Time label
+          const timeStr = new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          setTimeLabels(prev => [...prev, timeStr].slice(-MAX_HISTORY_POINTS));
+
+          // Evaluate alerts
+          const fired = alertEngine.evaluate(aggregated);
+          if (fired.length > 0) {
+            setActiveAlerts(prev => [...fired, ...prev].slice(0, 20));
+          }
+
+          // Store snapshot locally
+          healthLocalStore.storeSnapshot(aggregated);
+
+          // Add to sync batch
+          syncQueueManager.addReading(aggregated);
+        }
       }
-      if (snapshot.spO2 != null) {
-        setSpO2(snapshot.spO2);
-        setSpO2Status(snapshot.spO2Status);
-        setSpO2History(prev => [...prev, snapshot.spO2!].slice(-MAX_HISTORY_POINTS));
-      }
-      if (snapshot.temperature != null) {
-        setTemperature(snapshot.temperature);
-        setTemperatureStatus(snapshot.temperatureStatus);
-        setTemperatureHistory(prev => [...prev, snapshot.temperature!].slice(-MAX_HISTORY_POINTS));
-      }
-      if (snapshot.stressScore != null) {
-        setStressScore(snapshot.stressScore);
-        setStressStatus(snapshot.stressStatus);
-        setStressHistory(prev => [...prev, snapshot.stressScore!].slice(-MAX_HISTORY_POINTS));
-      }
-
-      // Update activity
-      setActivity(snapshot.activity);
-      setFallDetected(snapshot.fallDetected);
-      setIsSleeping(snapshot.isSleeping);
-
-      // Update contractions
-      setContractionActive(snapshot.contractionActive);
-      setContractionPhase(snapshot.contractionPhase);
-      setContractionIntensity(snapshot.contractionIntensity);
-      setContractionDuration(snapshot.contractionDuration);
-      setContractionInterval(snapshot.contractionInterval);
-      setContractionFrequency(snapshot.contractionFrequency);
-      setFlexHistory(prev => [...prev, snapshot.smoothedFlex].slice(-MAX_HISTORY_POINTS));
-
-      // Update battery
-      if (snapshot.batteryLevel != null) {
-        setBatteryLevel(snapshot.batteryLevel);
-      }
-
-      // Time label
-      const timeStr = new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-      setTimeLabels(prev => [...prev, timeStr].slice(-MAX_HISTORY_POINTS));
-
-      // Evaluate alerts
-      const fired = alertEngine.evaluate(snapshot);
-      if (fired.length > 0) {
-        setActiveAlerts(prev => [...fired, ...prev].slice(0, 20));
-      }
-
-      // Store snapshot locally
-      healthLocalStore.storeSnapshot(snapshot);
-
-      // Add to sync batch
-      syncQueueManager.addReading(snapshot);
     } catch (error) {
       console.error('Error processing telemetry:', error);
     } finally {
@@ -284,5 +306,73 @@ export const useMaternalHealth = () => {
     getAlertHistory,
   };
 };
+
+function computeAggregatedSnapshot(snapshots: HealthSnapshot[]): HealthSnapshot {
+  const latest = snapshots[snapshots.length - 1];
+  const mean = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+  const numArr = (key: keyof HealthSnapshot) => snapshots.map(s => s[key] as number).filter(v => v != null);
+
+  const hrArr = numArr('heartRate');
+  const spO2Arr = numArr('spO2');
+  const tempArr = numArr('temperature');
+  const stressArr = numArr('stressScore');
+  const batteryArr = numArr('batteryLevel');
+
+  const heartRate = hrArr.length > 0 ? Math.round(mean(hrArr)!) : null;
+  const spO2 = spO2Arr.length > 0 ? Math.round(mean(spO2Arr)!) : null;
+  const temperature = tempArr.length > 0 ? parseFloat(mean(tempArr)!.toFixed(1)) : null;
+  const stressScore = stressArr.length > 0 ? Math.round(mean(stressArr)!) : null;
+  const batteryLevel = batteryArr.length > 0 ? Math.round(mean(batteryArr)!) : latest.batteryLevel;
+
+  const getMode = (arr: any[]) => arr.sort((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
+
+  return {
+    timestamp: latest.timestamp,
+    batteryLevel,
+    heartRate,
+    heartRateStatus: heartRate ? classifyHR(heartRate) : latest.heartRateStatus,
+    spO2,
+    spO2Status: spO2 ? classifySpO2(spO2) : latest.spO2Status,
+    temperature,
+    temperatureStatus: temperature ? classifyTemp(temperature) : latest.temperatureStatus,
+    stressScore,
+    stressStatus: stressScore ? classifyStress(stressScore) : latest.stressStatus,
+    activity: getMode(snapshots.map(s => s.activity)),
+    fallDetected: snapshots.some(s => s.fallDetected),
+    isSleeping: getMode(snapshots.map(s => s.isSleeping)),
+    accelMagnitude: latest.accelMagnitude,
+    contractionActive: snapshots.some(s => s.contractionActive),
+    contractionPhase: getMode(snapshots.map(s => s.contractionPhase)),
+    contractionIntensity: latest.contractionIntensity,
+    contractionDuration: Math.max(...snapshots.map(s => s.contractionDuration)),
+    contractionInterval: Math.max(...snapshots.map(s => s.contractionInterval)),
+    contractionFrequency: latest.contractionFrequency,
+    smoothedFlex: latest.smoothedFlex,
+    flex1Raw: latest.flex1Raw,
+    flex2Raw: latest.flex2Raw,
+    gsrRaw: latest.gsrRaw
+  };
+}
+
+function classifyHR(bpm: number): HealthStatus {
+  if (bpm < 50 || bpm > 120) return 'urgent';
+  if (bpm < 60 || bpm > 100) return 'attention';
+  return 'normal';
+}
+function classifySpO2(spo2: number): HealthStatus {
+  if (spo2 < 92) return 'urgent';
+  if (spo2 < 95) return 'attention';
+  return 'normal';
+}
+function classifyTemp(temp: number): HealthStatus {
+  if (temp < 35.5 || temp > 38.0) return 'urgent';
+  if (temp < 36.1 || temp > 37.5) return 'attention';
+  return 'normal';
+}
+function classifyStress(stress: number): HealthStatus {
+  if (stress > 70) return 'urgent';
+  if (stress > 40) return 'attention';
+  return 'normal';
+}
 
 export default useMaternalHealth;

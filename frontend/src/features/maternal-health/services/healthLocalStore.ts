@@ -9,7 +9,6 @@ const SNAPSHOT_PREFIX = '@mhl_snapshots_';
 const ALERTS_KEY = '@mhl_alerts';
 const BASELINES_KEY = '@mhl_baselines';
 const RETENTION_DAYS = 7;
-const SAMPLE_INTERVAL_MS = 5000; // Store 1 reading per 5 seconds
 
 export interface StoredAlert {
   timestamp: number;
@@ -22,14 +21,10 @@ class HealthLocalStore {
   private lastStoreTime = 0;
 
   /**
-   * Store a health snapshot if enough time has passed since the last store.
-   * Subsamples the 1Hz stream to 1 reading per 5 seconds to limit storage.
+   * Store a health snapshot (which is now an aggregated 2-minute mean).
    */
   async storeSnapshot(snapshot: HealthSnapshot): Promise<boolean> {
     const now = Date.now();
-    if (now - this.lastStoreTime < SAMPLE_INTERVAL_MS) {
-      return false; // Skip — too soon
-    }
     this.lastStoreTime = now;
 
     const dateKey = this.getDateKey(now);

@@ -7,7 +7,7 @@ import healthLocalStore, { StoredAlert } from './healthLocalStore';
 import cloudSyncService from './cloudSyncService';
 import { SyncPayload } from '../api/healthSyncApi';
 
-const BATCH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const BATCH_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 class SyncQueueManager {
   private batchBuffer: HealthSnapshot[] = [];
@@ -30,7 +30,7 @@ class SyncQueueManager {
   }
 
   /**
-   * Start automatic batch flushing every 30 minutes.
+   * Start automatic batch flushing every 2 minutes.
    */
   startAutoBatching() {
     if (this.batchTimerId) return;
