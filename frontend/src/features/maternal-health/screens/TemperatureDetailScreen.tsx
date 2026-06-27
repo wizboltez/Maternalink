@@ -103,7 +103,7 @@ const TemperatureDetailScreen: React.FC<{ navigation: any; route?: any }> = ({ n
             <BodyText
               style={[
                 styles.rangeButtonText,
-                selectedRange === range && styles.rangeButtonTextActive,
+                selectedRange === range ? styles.rangeButtonTextActive : {},
               ]}
             >
               {range}

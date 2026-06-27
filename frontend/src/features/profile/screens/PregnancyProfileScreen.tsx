@@ -23,7 +23,7 @@ export const PregnancyProfileScreen: React.FC<{ navigation: any; route?: any }> 
     if (profile) {
       setPregnancyWeek(String(profile.pregnancyWeek));
       setWeight(String(profile.weight));
-      setBloodGroup(profile.bloodGroup);
+      setBloodGroup(profile.bloodGroup || '');
       if (profile.expectedDeliveryDate) {
         const dateObj = new Date(profile.expectedDeliveryDate);
         const yyyy = dateObj.getFullYear();

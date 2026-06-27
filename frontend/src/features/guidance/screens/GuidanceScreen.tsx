@@ -107,7 +107,7 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           <View>
             <Heading style={styles.title}>Weekly Guidance</Heading>
             <BodyText style={styles.subtitle}>
-              Week {profile.pregnancyWeek} · {trimesterSuffix(profile.trimester)} Trimester
+              Week {profile.pregnancyWeek || 0} · {trimesterSuffix(profile.trimester || 1)} Trimester
             </BodyText>
           </View>
           <View style={styles.headerRight}>

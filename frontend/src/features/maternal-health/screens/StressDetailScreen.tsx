@@ -146,7 +146,7 @@ const StressDetailScreen: React.FC<{ navigation: any; route?: any }> = ({ naviga
             <BodyText
               style={[
                 styles.rangeButtonText,
-                selectedRange === range && styles.rangeButtonTextActive,
+                selectedRange === range ? styles.rangeButtonTextActive : {},
               ]}
             >
               {range}

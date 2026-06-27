@@ -81,11 +81,11 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
             <BodyText style={styles.rowValue}>Week {profile.pregnancyWeek}</BodyText>
 
             <BodyText style={styles.rowLabel}>Trimester</BodyText>
-            <BodyText style={styles.rowValue}>{getTrimesterText(profile.trimester)}</BodyText>
+            <BodyText style={styles.rowValue}>{getTrimesterText(profile.trimester || 1)}</BodyText>
             
             <BodyText style={styles.rowLabel}>Expected Delivery Date</BodyText>
             <BodyText style={styles.rowValue}>
-              {new Date(profile.expectedDeliveryDate).toLocaleDateString(undefined, {
+              {new Date(profile.expectedDeliveryDate || Date.now()).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

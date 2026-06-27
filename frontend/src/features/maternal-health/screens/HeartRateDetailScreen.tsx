@@ -123,7 +123,7 @@ const HeartRateDetailScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
             <BodyText
               style={[
                 styles.rangeButtonText,
-                selectedRange === range && styles.rangeButtonTextActive,
+                selectedRange === range ? styles.rangeButtonTextActive : {},
               ]}
             >
               {range}
