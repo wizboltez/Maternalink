@@ -101,3 +101,73 @@ export const postReadingSchema = z.object({
     isContraction: z.boolean().optional(),
   }),
 });
+
+// --- Emergency System Zod Schemas ---
+
+export const sosAlertSchema = z.object({
+  body: z.object({
+    userId: z.string().length(24, 'Invalid User ID format.'),
+    deviceId: z.string().min(1, 'Device identifier is required.'),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Timestamp must be a valid date string.',
+    }).optional(),
+  }),
+});
+
+export const autoAlertSchema = z.object({
+  body: z.object({
+    userId: z.string().length(24, 'Invalid User ID format.'),
+    triggerType: z.enum([
+      'SOS_BUTTON',
+      'HIGH_STRESS',
+      'HIGH_HEART_RATE',
+      'STRONG_CONTRACTIONS',
+      'ABNORMAL_FETAL_HEARTBEAT',
+      'FALL_DETECTED',
+      'MULTIPLE_RISK_FACTORS',
+    ]).optional(),
+    sensorData: z.object({
+      maternalHeartRate: z.number().optional(),
+      fetalHeartRate: z.number().optional(),
+      stressLevel: z.number().optional(),
+      contractionIntensity: z.number().optional(),
+      contractionFrequency: z.number().optional(),
+      fallDetected: z.boolean().optional(),
+    }).optional(),
+  }),
+});
+
+export const saveContactSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters.'),
+    relation: z.string().min(2, 'Relation must be at least 2 characters.'),
+    phone: z.string().min(8, 'Phone number must be at least 8 digits.').regex(/^\+?[0-9]{8,15}$/, 'Invalid phone number format.'),
+    whatsapp: z.string().min(8, 'WhatsApp number must be at least 8 digits.').regex(/^\+?[0-9]{8,15}$/, 'Invalid WhatsApp number format.'),
+    priority: z.number().min(1, 'Priority must be at least 1.'),
+  }),
+});
+
+export const updateContactSchema = z.object({
+  params: z.object({
+    contactId: z.string().length(24, 'Invalid Contact ID format.'),
+  }),
+  body: z.object({
+    name: z.string().min(2).optional(),
+    relation: z.string().min(2).optional(),
+    phone: z.string().min(8).regex(/^\+?[0-9]{8,15}$/).optional(),
+    whatsapp: z.string().min(8).regex(/^\+?[0-9]{8,15}$/).optional(),
+    priority: z.number().min(1).optional(),
+  }),
+});
+
+export const updateSettingsSchema = z.object({
+  body: z.object({
+    whatsappAlertsEnabled: z.boolean().optional(),
+    pushNotificationsEnabled: z.boolean().optional(),
+    autoAlertsEnabled: z.boolean().optional(),
+    sosButtonEnabled: z.boolean().optional(),
+  }),
+});
+

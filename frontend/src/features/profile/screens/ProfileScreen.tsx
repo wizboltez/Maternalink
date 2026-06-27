@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -92,6 +92,43 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           </Card>
         )}
 
+        <Card style={styles.card}>
+          <Subheading style={styles.cardTitle}>Emergency Alert System</Subheading>
+          
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('EmergencyContacts')}
+          >
+            <View>
+              <BodyText style={styles.menuTitle}>🚨 Emergency Contacts</BodyText>
+              <Caption style={styles.menuDesc}>Manage contacts notified during alerts</Caption>
+            </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('EmergencyAlertHistory')}
+          >
+            <View>
+              <BodyText style={styles.menuTitle}>🕒 Alert History Logs</BodyText>
+              <Caption style={styles.menuDesc}>View past emergency logs & vitals</Caption>
+            </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuRow, { borderBottomWidth: 0 }]}
+            onPress={() => navigation.navigate('EmergencySettings')}
+          >
+            <View>
+              <BodyText style={styles.menuTitle}>⚙️ Alert Configurations</BodyText>
+              <Caption style={styles.menuDesc}>Manage trigger rules & notifications</Caption>
+            </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
+        </Card>
+
         <Button title="Sign Out" variant="danger" onPress={handleLogout} style={styles.logoutBtn} />
         
         <Caption style={styles.version}>Maternalink Guidance System v1.0.0</Caption>
@@ -123,6 +160,28 @@ const styles = StyleSheet.create({
   setupBtn: { marginTop: Theme.spacing.md },
   logoutBtn: { marginTop: Theme.spacing.md },
   version: { textAlign: 'center', marginTop: Theme.spacing.lg, marginBottom: Theme.spacing.xxl },
+  menuRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+  },
+  menuTitle: {
+    fontWeight: '600',
+    color: Theme.colors.text,
+  },
+  menuDesc: {
+    color: Theme.colors.textSecondary,
+    fontSize: Theme.typography.sizes.xs,
+    marginTop: 2,
+  },
+  menuArrow: {
+    color: Theme.colors.primary,
+    fontSize: Theme.typography.sizes.md,
+    fontWeight: 'bold',
+  },
 });
 
 export default ProfileScreen;
