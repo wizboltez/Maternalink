@@ -115,13 +115,13 @@ export const contractionApi = {
     return res.data;
   },
 
-  // --- PDF & CSV Downloads ---
-  getPdfReportUrl: (sessionId: string) => {
-    return `${API_BASE_URL}/monitoring/export/pdf/${sessionId}?token=${userToken}`;
-  },
+  getAuthToken: () => userToken,
 
-  getCsvReportUrl: (sessionId: string) => {
-    return `${API_BASE_URL}/monitoring/export/csv/${sessionId}?token=${userToken}`;
+  downloadSessionPdf: async (sessionId: string): Promise<ArrayBuffer> => {
+    const res = await apiClient.get(`/monitoring/export/pdf/${sessionId}`, {
+      responseType: 'arraybuffer',
+    });
+    return res.data;
   },
 };
 

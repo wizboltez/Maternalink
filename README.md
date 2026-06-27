@@ -21,7 +21,7 @@ Maternalink is a maternal health platform with pregnancy tracking, a health hub,
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB (local or Atlas)
+- MongoDB (local or [Atlas](docs/MONGODB_ATLAS_SETUP.md))
 - JDK 17 + Android Studio (for Android)
 - See [docs/ANDROID_SETUP_GUIDE.md](docs/ANDROID_SETUP_GUIDE.md) for full environment setup
 

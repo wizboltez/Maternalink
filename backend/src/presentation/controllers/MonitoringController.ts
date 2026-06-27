@@ -80,6 +80,26 @@ export class MonitoringController {
 
       session.status = 'completed';
       session.endTime = new Date();
+
+      const durationMs = session.endTime.getTime() - session.startTime.getTime();
+      const MIN_SESSION_MS = 60 * 1000; // Do not persist sessions shorter than 1 minute
+
+      if (durationMs < MIN_SESSION_MS) {
+        await ContractionReading.deleteMany({ monitoringSessionId: session._id });
+        await MonitoringSession.findByIdAndDelete(sessionId);
+        SignalProcessorService.removeSessionState(sessionId);
+
+        SocketServer.broadcastToSession(sessionId, 'session_stopped', {
+          sessionId,
+          discarded: true,
+        });
+
+        return res.status(200).json({
+          message: 'Session was shorter than 1 minute and was not saved.',
+          discarded: true,
+        });
+      }
+
       await session.save();
 
       // Clean signal state
@@ -192,6 +212,12 @@ export class MonitoringController {
       }
 
       let sessions = await MonitoringSession.find(query).sort({ startTime: -1 });
+
+      // Exclude sessions shorter than 1 minute
+      sessions = sessions.filter((s) => {
+        const end = s.endTime || s.startTime;
+        return end.getTime() - s.startTime.getTime() >= 60 * 1000;
+      });
 
       // Support basic filtering/search (notes lookup)
       if (search) {

@@ -6,7 +6,10 @@ export const registerSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters.'),
     name: z.string().min(2, 'Name is too short.'),
     gestationalAgeWeeks: z.number().min(0).max(50),
-    dueDate: z.string().datetime({ message: 'Due date must be a valid ISO datetime.' }),
+    dueDate: z.string().regex(
+                                /^\d{4}-\d{2}-\d{2}$/,
+                                'Due date must be in YYYY-MM-DD format.'
+                              ),
     doctorName: z.string().min(2, 'Doctor name is required.'),
     emergencyContact: z.string().min(5, 'Emergency contact is required.'),
   }),

@@ -5,6 +5,14 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { CustomLineChart } from '../../../core/components/CustomLineChart';
 import contractionApi from '../api/contractionApi';
+import {
+  formatDurationSeconds,
+  formatInterval,
+  formatSessionLength,
+  formatSessionDate,
+  formatClockTime,
+  formatShortChartDate,
+} from '../../../core/utils/timeFormat';
 
 export const AnalyticsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -34,11 +42,13 @@ export const AnalyticsScreen: React.FC = () => {
         const chronological = [...list].reverse();
         
         const dates = chronological.map((s: any) =>
-          new Date(s.session.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })
+          formatShortChartDate(s.session.startTime)
         );
         const counts = chronological.map((s: any) => s.stats.totalContractions);
         const durations = chronological.map((s: any) => s.stats.averageDuration);
-        const intervals = chronological.map((s: any) => Math.round(s.stats.averageInterval / 60));
+        const intervals = chronological.map((s: any) =>
+          s.stats.averageInterval > 0 ? Math.round(s.stats.averageInterval / 60) : 0
+        );
 
         setSessionDates(dates);
         setCountsData(counts);
@@ -101,12 +111,12 @@ export const AnalyticsScreen: React.FC = () => {
               </View>
               <View style={styles.gridItem}>
                 <Caption>Avg Duration</Caption>
-                <Subheading style={styles.summaryVal}>{overallStats.avgDuration}s</Subheading>
+                <Subheading style={styles.summaryVal}>{formatDurationSeconds(overallStats.avgDuration)}</Subheading>
               </View>
               <View style={styles.gridItem}>
                 <Caption>Avg Interval</Caption>
                 <Subheading style={styles.summaryVal}>
-                  {overallStats.avgInterval > 0 ? `${overallStats.avgInterval}m` : 'N/A'}
+                  {overallStats.avgInterval > 0 ? formatInterval(overallStats.avgInterval * 60) : 'N/A'}
                 </Subheading>
               </View>
             </View>

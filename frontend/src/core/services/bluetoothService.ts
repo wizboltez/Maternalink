@@ -1,10 +1,16 @@
+import { NativeModules, Platform, PermissionsAndroid } from 'react-native';
 import { BleManager, Device, Characteristic, State } from 'react-native-ble-plx';
-import { PermissionsAndroid, Platform } from 'react-native';
 
-// Maternalink Smart Belt BLE identifiers (ESP32 firmware)
 export const MATERNALINK_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c5c6b0bf00';
 export const TELEMETRY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 export const BATTERY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
+
+export interface ScannedDevice {
+  id: string;
+  name: string;
+  address: string;
+  type: 'ble' | 'classic' | 'dual';
+}
 
 export interface BeltTelemetry {
   rawAdc?: number;
@@ -15,6 +21,8 @@ export interface BeltTelemetry {
 
 type TelemetryCallback = (data: BeltTelemetry) => void;
 type ConnectionCallback = (connected: boolean, deviceName?: string) => void;
+
+const { BluetoothScanModule } = NativeModules;
 
 function decodeBleValue(base64: string): string {
   if (typeof globalThis.atob === 'function') {
@@ -29,25 +37,23 @@ function decodeBleValue(base64: string): string {
     const enc2 = chars.indexOf(input.charAt(i++));
     const enc3 = chars.indexOf(input.charAt(i++));
     const enc4 = chars.indexOf(input.charAt(i++));
-    const chr1 = (enc1 << 2) | (enc2 >> 4);
-    const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-    const chr3 = ((enc3 & 3) << 6) | enc4;
-    output += String.fromCharCode(chr1);
-    if (enc3 !== 64) output += String.fromCharCode(chr2);
-    if (enc4 !== 64) output += String.fromCharCode(chr3);
+    output += String.fromCharCode((enc1 << 2) | (enc2 >> 4));
+    if (enc3 !== 64) output += String.fromCharCode(((enc2 & 15) << 4) | (enc3 >> 2));
+    if (enc4 !== 64) output += String.fromCharCode(((enc3 & 3) << 6) | enc4);
   }
   return output;
 }
 
 class BluetoothService {
-  private manager: BleManager;
+  private bleManager: BleManager;
   private connectedDevice: Device | null = null;
   private telemetrySubscription: { remove: () => void } | null = null;
   private onTelemetry: TelemetryCallback | null = null;
   private onConnectionChange: ConnectionCallback | null = null;
+  private connectedDeviceName: string | null = null;
 
   constructor() {
-    this.manager = new BleManager();
+    this.bleManager = new BleManager();
   }
 
   setTelemetryCallback(cb: TelemetryCallback | null) {
@@ -59,9 +65,7 @@ class BluetoothService {
   }
 
   async requestPermissions(): Promise<boolean> {
-    if (Platform.OS !== 'android') {
-      return true;
-    }
+    if (Platform.OS !== 'android') return true;
 
     const apiLevel = Platform.Version as number;
     if (apiLevel >= 31) {
@@ -83,70 +87,71 @@ class BluetoothService {
   }
 
   async isBluetoothEnabled(): Promise<boolean> {
-    const state = await this.manager.state();
+    if (Platform.OS === 'android' && BluetoothScanModule?.isBluetoothEnabled) {
+      return BluetoothScanModule.isBluetoothEnabled();
+    }
+    const state = await this.bleManager.state();
     return state === State.PoweredOn;
   }
 
-  async scanForDevices(
-    onDeviceFound: (device: Device) => void,
-    timeoutMs = 12000
-  ): Promise<void> {
+  /** Scan classic + BLE devices using Android BluetoothManager / BluetoothAdapter */
+  async scanAllDevices(timeoutMs = 12000): Promise<ScannedDevice[]> {
     const enabled = await this.isBluetoothEnabled();
     if (!enabled) {
-      throw new Error('Bluetooth is turned off. Please enable it in your device settings.');
+      throw new Error('Bluetooth is turned off. Please enable it in Settings.');
     }
 
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
-      throw new Error('Bluetooth permissions are required to scan for the maternal belt.');
+      throw new Error('Bluetooth permissions are required to scan for devices.');
     }
 
+    if (Platform.OS === 'android' && BluetoothScanModule?.startScan) {
+      const results = await BluetoothScanModule.startScan(timeoutMs);
+      return (results || []).map((d: ScannedDevice) => ({
+        id: d.id || d.address,
+        name: d.name || 'Unknown Device',
+        address: d.address || d.id,
+        type: (d.type as ScannedDevice['type']) || 'ble',
+      }));
+    }
+
+    // iOS fallback: BLE-only via ble-plx
     return new Promise((resolve, reject) => {
-      const discovered = new Set<string>();
-
-      this.manager.startDeviceScan(
-        [MATERNALINK_SERVICE_UUID],
-        { allowDuplicates: false },
-        (error, device) => {
-          if (error) {
-            this.manager.stopDeviceScan();
-            reject(error);
-            return;
-          }
-          if (!device || !device.id || discovered.has(device.id)) {
-            return;
-          }
-
-          const name = device.name || device.localName || '';
-          if (
-            name.toLowerCase().includes('maternalink') ||
-            name.toLowerCase().includes('maternal') ||
-            name.toLowerCase().includes('smb') ||
-            name.toLowerCase().includes('esp32')
-          ) {
-            discovered.add(device.id);
-            onDeviceFound(device);
-          }
+      const found = new Map<string, ScannedDevice>();
+      this.bleManager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
+        if (error) {
+          this.bleManager.stopDeviceScan();
+          reject(error);
+          return;
         }
-      );
+        if (!device?.id) return;
+        if (!found.has(device.id)) {
+          found.set(device.id, {
+            id: device.id,
+            name: device.name || device.localName || 'Unknown Device',
+            address: device.id,
+            type: 'ble',
+          });
+        }
+      });
 
       setTimeout(() => {
-        this.manager.stopDeviceScan();
-        resolve();
+        this.bleManager.stopDeviceScan();
+        resolve(Array.from(found.values()));
       }, timeoutMs);
     });
   }
 
-  async connect(device: Device): Promise<Device> {
+  async connectByAddress(deviceId: string, deviceName: string): Promise<void> {
     await this.disconnect();
 
-    const connected = await device.connect({ timeout: 15000 });
-    await connected.discoverAllServicesAndCharacteristics();
-    this.connectedDevice = connected;
-    this.onConnectionChange?.(true, connected.name || connected.localName || 'Smart Belt');
-
-    await this.subscribeToTelemetry(connected);
-    return connected;
+    const device = await this.bleManager.connectToDevice(deviceId, { timeout: 15000 });
+    await device.discoverAllServicesAndCharacteristics();
+    this.connectedDevice = device;
+    this.connectedDeviceName = deviceName;
+    this.onConnectionChange?.(true, deviceName);
+    await this.subscribeToTelemetry(device);
   }
 
   private async subscribeToTelemetry(device: Device): Promise<void> {
@@ -156,13 +161,9 @@ class BluetoothService {
       MATERNALINK_SERVICE_UUID,
       TELEMETRY_CHARACTERISTIC_UUID,
       (error, characteristic) => {
-        if (error || !characteristic?.value) {
-          return;
-        }
+        if (error || !characteristic?.value) return;
         const parsed = this.parseTelemetry(characteristic);
-        if (parsed) {
-          this.onTelemetry?.(parsed);
-        }
+        if (parsed) this.onTelemetry?.(parsed);
       }
     );
   }
@@ -183,17 +184,13 @@ class BluetoothService {
   }
 
   async readBatteryLevel(): Promise<number | null> {
-    if (!this.connectedDevice) {
-      return null;
-    }
+    if (!this.connectedDevice) return null;
     try {
       const char = await this.connectedDevice.readCharacteristicForService(
         MATERNALINK_SERVICE_UUID,
         BATTERY_CHARACTERISTIC_UUID
       );
-      if (!char.value) {
-        return null;
-      }
+      if (!char.value) return null;
       const level = parseInt(decodeBleValue(char.value), 10);
       return isNaN(level) ? null : level;
     } catch {
@@ -201,8 +198,12 @@ class BluetoothService {
     }
   }
 
-  getConnectedDevice(): Device | null {
-    return this.connectedDevice;
+  getConnectedDeviceId(): string | null {
+    return this.connectedDevice?.id ?? null;
+  }
+
+  getConnectedDeviceName(): string | null {
+    return this.connectedDeviceName;
   }
 
   isConnected(): boolean {
@@ -217,16 +218,17 @@ class BluetoothService {
       try {
         await this.connectedDevice.cancelConnection();
       } catch {
-        // Device may already be disconnected
+        // already disconnected
       }
       this.connectedDevice = null;
+      this.connectedDeviceName = null;
       this.onConnectionChange?.(false);
     }
   }
 
   destroy(): void {
     this.disconnect();
-    this.manager.destroy();
+    this.bleManager.destroy();
   }
 }
 

@@ -5,6 +5,13 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import contractionApi from '../api/contractionApi';
+import {
+  formatDurationSeconds,
+  formatInterval,
+  formatSessionLength,
+  formatSessionDate,
+  formatClockTime,
+} from '../../../core/utils/timeFormat';
 
 interface SessionItem {
   session: {
@@ -86,8 +93,8 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
 
   const renderSessionItem = ({ item }: { item: SessionItem }) => {
     const isSelected = selectedIds.includes(item.session._id);
-    const date = new Date(item.session.startTime).toLocaleDateString();
-    const time = new Date(item.session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = formatSessionDate(item.session.startTime);
+    const time = formatClockTime(item.session.startTime);
 
     return (
       <Card style={[styles.sessionCard, ...(isSelected ? [styles.selectedCard] : [])]}>
@@ -112,7 +119,7 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
           </View>
           <View style={styles.metric}>
             <Caption>Avg Dur</Caption>
-            <BodyText style={styles.metricVal}>{item.stats.averageDuration}s</BodyText>
+            <BodyText style={styles.metricVal}>{formatDurationSeconds(item.stats.averageDuration)}</BodyText>
           </View>
           <View style={styles.metric}>
             <Caption>Peak Intensity</Caption>
@@ -120,7 +127,7 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
           </View>
           <View style={styles.metric}>
             <Caption>Length</Caption>
-            <BodyText style={styles.metricVal}>{item.stats.sessionDurationMinutes}m</BodyText>
+            <BodyText style={styles.metricVal}>{formatSessionLength(item.stats.sessionDurationMinutes)}</BodyText>
           </View>
         </View>
 
@@ -140,7 +147,7 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
         </BodyText>
       </View>
 
-      {/* Filter and search bars */}
+      {/* Filter and search bars
       <View style={styles.filtersSection}>
         <TextInput
           value={search}
@@ -165,7 +172,7 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
             style={styles.dateInput}
           />
         </View>
-      </View>
+      </View> */}
 
       {loading && sessions.length === 0 ? (
         <ActivityIndicator size="large" color={Theme.colors.primary} style={styles.spinner} />

@@ -4,6 +4,7 @@ import voiceSpeechEngine from '../services/voiceSpeechEngine';
 import contractionApi from '../api/contractionApi';
 import bluetoothService from '../../../core/services/bluetoothService';
 import { SOCKET_URL } from '../../../core/config/api';
+import { formatClockTime } from '../../../core/utils/timeFormat';
 
 export interface ContractionEvent {
   timestamp: string;
@@ -18,8 +19,10 @@ export const useContractionMonitoring = (
   deviceId: string | null,
   initialCalibrationConfidence = 100
 ) => {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [isBeltConnected, setIsBeltConnected] = useState(bluetoothService.isConnected());
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
+  const [sessionStartedAt, setSessionStartedAt] = useState<Date | null>(null);
   const [currentReading, setCurrentReading] = useState<{
     rawAdc?: number;
     flexPercent: number;
@@ -27,68 +30,64 @@ export const useContractionMonitoring = (
     phase: 'none' | 'rise' | 'peak' | 'fall';
   } | null>(null);
 
-  // Time-series buffers for graphs (clamped to last 50 points)
   const [adcBuffer, setAdcBuffer] = useState<number[]>([]);
   const [flexBuffer, setFlexBuffer] = useState<number[]>([]);
   const [intensityBuffer, setIntensityBuffer] = useState<number[]>([]);
   const [timeLabels, setTimeLabels] = useState<string[]>([]);
 
-  // Detected contractions
   const [contractions, setContractions] = useState<ContractionEvent[]>([]);
-  const [rollingFrequency, setRollingFrequency] = useState<number>(0);
   const [activeAlert, setActiveAlert] = useState<{ type: string; message: string } | null>(null);
 
-  // Voice States
   const [isMuted, setIsMuted] = useState(voiceSpeechEngine.getMutedState());
   const [voiceVolume, setVoiceVolume] = useState(voiceSpeechEngine.getVolumeState());
 
-  // Manual Confirmation Mode triggers
-  const [showManualRecommendation, setShowManualRecommendation] = useState(false);
   const [manualStartTime, setManualStartTime] = useState<Date | null>(null);
   const [isManualRecordingActive, setIsManualRecordingActive] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
   const lastPhaseRef = useRef<'none' | 'rise' | 'peak' | 'fall'>('none');
 
+  const isContractionCalculating =
+    currentReading?.phase === 'rise' ||
+    currentReading?.phase === 'peak' ||
+    currentReading?.phase === 'fall';
+
+  useEffect(() => {
+    bluetoothService.setConnectionCallback((connected) => {
+      setIsBeltConnected(connected);
+    });
+    return () => bluetoothService.setConnectionCallback(null);
+  }, []);
+
   useEffect(() => {
     if (!sessionId) return;
 
-    // Recommend manual confirmation if calibration confidence is weak
-    if (initialCalibrationConfidence < 65) {
-      setShowManualRecommendation(true);
-    }
-
-    // Connect to WebSocket Server
     const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      setIsConnected(true);
-      console.log('✅ Connected to monitoring socket channel.');
+      setIsSocketConnected(true);
+      setSessionStartedAt(new Date());
       socket.emit('join_session', sessionId);
       voiceSpeechEngine.speak('monitoring_started');
     });
 
     socket.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('❌ Disconnected from monitoring socket.');
+      setIsSocketConnected(false);
     });
 
-    // Ingest live reading update
     socket.on('reading_received', (reading: any) => {
       const { rawAdc, flexPercent, intensity, phase, isContraction, duration, interval, timestamp } = reading;
 
       setCurrentReading({ rawAdc, flexPercent, intensity, phase });
 
-      const dateStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = formatClockTime(timestamp, { withSeconds: true });
 
-      // Update Chart Data Buffers
       setAdcBuffer((prev) => [...prev, rawAdc ?? 0].slice(-40));
       setFlexBuffer((prev) => [...prev, flexPercent ?? 0].slice(-40));
       setIntensityBuffer((prev) => [...prev, intensity ?? 0].slice(-40));
       setTimeLabels((prev) => [...prev, dateStr].slice(-40));
 
-      // Voice guidance based on phase shifts
       if (phase === 'rise' && lastPhaseRef.current === 'none') {
         voiceSpeechEngine.speak('contraction_detected');
       } else if (phase === 'none' && lastPhaseRef.current === 'fall' && isContraction) {
@@ -96,34 +95,25 @@ export const useContractionMonitoring = (
       }
       lastPhaseRef.current = phase;
 
-      // Log verified contractions list
       if (isContraction && duration) {
         const event: ContractionEvent = {
-          timestamp: new Date(timestamp).toLocaleTimeString(),
+          timestamp: formatClockTime(timestamp),
           duration,
           intensity,
           interval,
           isConfirmed: false,
         };
         setContractions((prev) => [event, ...prev]);
-
-        // Triggers confirmation overlay request
-        voiceSpeechEngine.speak('please_confirm_contraction');
       }
     });
 
-    // Handle Alerts Broadcasters
     socket.on('alert_triggered', (alert: { type: string; message: string }) => {
       setActiveAlert(alert);
-
-      // Play vocal warnings based on alert type
       if (alert.type === 'high_intensity') {
-        voiceSpeechEngine.speak('please_remain_still');
+        voiceSpeechEngine.speak('high_intensity');
       } else if (alert.type === 'frequent_contractions') {
         voiceSpeechEngine.speak('please_confirm_contraction');
       }
-
-      // Auto dismiss after 7 seconds
       setTimeout(() => setActiveAlert((prev) => (prev?.type === alert.type ? null : prev)), 7000);
     });
 
@@ -135,7 +125,6 @@ export const useContractionMonitoring = (
       voiceSpeechEngine.speak('monitoring_completed');
     });
 
-    // Forward BLE belt telemetry to backend when hardware is connected
     bluetoothService.setTelemetryCallback((telemetry) => {
       if (socketRef.current?.connected && sessionId) {
         socketRef.current.emit('hardware_reading', {
@@ -155,9 +144,8 @@ export const useContractionMonitoring = (
         socketRef.current.disconnect();
       }
     };
-  }, [sessionId, initialCalibrationConfidence]);
+  }, [sessionId]);
 
-  // Voice controls
   const toggleMute = () => {
     const nextState = !isMuted;
     voiceSpeechEngine.setMute(nextState);
@@ -169,55 +157,63 @@ export const useContractionMonitoring = (
     setVoiceVolume(vol);
   };
 
-  // --- Manual Confirmation Mode ---
   const startManualContraction = () => {
+    if (isContractionCalculating) return;
     setManualStartTime(new Date());
     setIsManualRecordingActive(true);
     voiceSpeechEngine.speak('recording_in_progress');
   };
 
+  const cancelManualPrompt = () => {
+    // Close prompt only — keep recording active
+  };
+
   const endManualContraction = async (confirmSave: boolean) => {
     if (!sessionId || !manualStartTime) return;
 
+    if (!confirmSave) {
+      setManualStartTime(null);
+      setIsManualRecordingActive(false);
+      return;
+    }
+
     setIsManualRecordingActive(false);
+    const now = new Date();
+    const durationSeconds = Math.round((now.getTime() - manualStartTime.getTime()) / 1000);
 
-    if (confirmSave) {
-      const now = new Date();
-      const durationSeconds = Math.round((now.getTime() - manualStartTime.getTime()) / 1000);
+    try {
+      await contractionApi.postReading(sessionId, {
+        source: 'manual',
+        isContraction: true,
+        isConfirmed: true,
+        duration: durationSeconds,
+        intensity: 60,
+        timestamp: now.getTime(),
+      });
 
-      // Save manual contraction reading to the backend
-      try {
-        const response = await contractionApi.postReading(sessionId, {
-          source: 'manual',
-          isContraction: true,
-          isConfirmed: true,
-          duration: durationSeconds,
-          intensity: 60, // manual average mapping
-          timestamp: now.getTime(),
-        });
-
-        // Add to local list immediately
-        const event: ContractionEvent = {
-          timestamp: now.toLocaleTimeString(),
+      setContractions((prev) => [
+        {
+          timestamp: formatClockTime(now),
           duration: durationSeconds,
           intensity: 60,
           isConfirmed: true,
-        };
-        setContractions((prev) => [event, ...prev]);
-
-        console.log('✅ Manual contraction saved:', response);
-      } catch (err) {
-        console.error('❌ Failed to save manual contraction reading:', err);
-      }
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      console.error('Failed to save manual contraction:', err);
     }
 
     setManualStartTime(null);
   };
 
   return {
-    isConnected,
+    isConnected: isSocketConnected,
+    isBeltConnected,
     batteryLevel,
+    sessionStartedAt,
     currentReading,
+    isContractionCalculating,
     adcBuffer,
     flexBuffer,
     intensityBuffer,
@@ -228,11 +224,9 @@ export const useContractionMonitoring = (
     voiceVolume,
     toggleMute,
     changeVolume,
-    // Manual Recording flows
-    showManualRecommendation,
-    dismissManualRecommendation: () => setShowManualRecommendation(false),
     isManualRecordingActive,
     startManualContraction,
+    cancelManualPrompt,
     endManualContraction,
   };
 };

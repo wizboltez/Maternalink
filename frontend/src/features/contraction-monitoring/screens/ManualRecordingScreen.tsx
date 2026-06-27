@@ -5,6 +5,8 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import { Modal } from '../../../core/components/Modal';
+import { getSavedBelts } from '../../../core/services/beltHistoryService';
+import { formatSessionTimer } from '../../../core/utils/timeFormat';
 import contractionApi from '../api/contractionApi';
 
 export const ManualRecordingScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
@@ -23,42 +25,43 @@ export const ManualRecordingScreen: React.FC<{ route: any; navigation: any }> = 
     duration: number;
   }[]>([]);
 
-  // Setup manual session using registered device and calibration
   useEffect(() => {
     const setupManualSession = async () => {
       setLoading(true);
       try {
-        const devicesData = await contractionApi.getDevices();
-        const registeredDevices = devicesData.devices || [];
-
-        if (registeredDevices.length === 0) {
+        const saved = await getSavedBelts();
+        if (saved.length === 0) {
           Alert.alert(
-            'No Belt Registered',
-            'Please connect your Smart Maternal Belt via Bluetooth before using manual recording.',
+            'No Belt Connected',
+            'Connect your Smart Maternal Belt via Bluetooth before manual recording.',
             [{ text: 'Connect Belt', onPress: () => navigation.navigate('DeviceConnection') }]
           );
           return;
         }
 
-        const belt = registeredDevices[0];
-        let calibrationId: string;
+        const belt = saved[0];
+        if (!belt.backendDeviceId) {
+          Alert.alert('Belt Not Ready', 'Reconnect your belt before manual recording.');
+          return;
+        }
 
+        let calibrationId: string;
         try {
-          const calData = await contractionApi.getLatestCalibration(belt._id);
+          const calData = await contractionApi.getLatestCalibration(belt.backendDeviceId);
           calibrationId = calData.calibration._id;
         } catch {
           Alert.alert(
             'Calibration Required',
-            'Your belt needs calibration before recording. Please run the calibration wizard first.',
-            [{ text: 'Calibrate', onPress: () => navigation.navigate('CalibrationWizard', { deviceId: belt._id }) }]
+            'Run the calibration wizard before manual recording.',
+            [{ text: 'Calibrate', onPress: () => navigation.navigate('CalibrationWizard', { deviceId: belt.backendDeviceId }) }]
           );
           return;
         }
 
-        const sess = await contractionApi.startSession(belt._id, calibrationId);
+        const sess = await contractionApi.startSession(belt.backendDeviceId, calibrationId);
         setActiveSessionId(sess.session._id);
       } catch (err: any) {
-        Alert.alert('Session Setup Error', err.response?.data?.error || 'Failed to initialize manual recording session.');
+        Alert.alert('Session Setup Error', err.response?.data?.error || 'Failed to initialize session.');
       } finally {
         setLoading(false);
       }
@@ -122,18 +125,19 @@ export const ManualRecordingScreen: React.FC<{ route: any; navigation: any }> = 
     setTimerSeconds(0);
   };
 
-  const formatTimer = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  const formatTimer = formatSessionTimer;
 
   const handleCloseSession = async () => {
     if (activeSessionId) {
       try {
-        await contractionApi.stopSession(activeSessionId);
+        const result = await contractionApi.stopSession(activeSessionId);
+        if (result.discarded) {
+          Alert.alert('Session Not Saved', 'Sessions shorter than 1 minute are not stored.');
+          navigation.navigate('MonitoringHome');
+          return;
+        }
         navigation.navigate('SessionSummary', { sessionId: activeSessionId });
-      } catch (err) {
+      } catch {
         navigation.navigate('MonitoringHome');
       }
     } else {
@@ -152,8 +156,10 @@ export const ManualRecordingScreen: React.FC<{ route: any; navigation: any }> = 
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Active Timer Box */}
-        <Card style={styles.timerCard}>
-          <Heading style={styles.timer}>{formatTimer(timerSeconds)}</Heading>
+            <Card style={styles.timerCard}>
+          <Heading style={styles.timer}>
+            {formatTimer(timerSeconds)}
+          </Heading>
           <Caption>{isRecording ? 'RECORDING ACTIVE CONTRACTION' : 'READY TO RECORD'}</Caption>
 
           {!isRecording ? (
@@ -242,13 +248,15 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.xl,
   },
   timerCard: {
-    alignItems: 'center',
-    paddingVertical: Theme.spacing.xxl,
+  alignItems: 'center',
+  paddingTop: Theme.spacing.xl,      // 24
+  paddingBottom: Theme.spacing.xxl,  // 32
   },
   timer: {
-    fontSize: Theme.typography.sizes.jumbo,
-    color: Theme.colors.primary,
-    marginBottom: Theme.spacing.md,
+  fontSize: Theme.typography.sizes.jumbo,
+  lineHeight: 60,
+  color: Theme.colors.primary,
+  marginBottom: Theme.spacing.md,
   },
   actionBtn: {
     width: '80%',

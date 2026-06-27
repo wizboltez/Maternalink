@@ -159,22 +159,26 @@ export const CustomLineChart: React.FC<CustomLineChartProps> = ({
           {/* Horizontal Labels */}
           {labels.length > 0 &&
             labels.map((lbl, index) => {
-              if (index === 0 || index === labels.length - 1 || index === Math.floor(labels.length / 2)) {
-                const x = paddingLeft + (index / (labels.length - 1)) * drawableWidth;
-                return (
-                  <SvgText
-                    key={index}
-                    x={x}
-                    y={height - 6}
-                    fontSize={Theme.typography.sizes.xs}
-                    fill={Theme.colors.textMuted}
-                    textAnchor="middle"
-                  >
-                    {lbl}
-                  </SvgText>
-                );
-              }
-              return null;
+              const denom = Math.max(1, labels.length - 1);
+              const showLabel =
+                labels.length === 1 ||
+                index === 0 ||
+                index === labels.length - 1 ||
+                index === Math.floor(labels.length / 2);
+              if (!showLabel) return null;
+              const x = paddingLeft + (index / denom) * drawableWidth;
+              return (
+                <SvgText
+                  key={index}
+                  x={x}
+                  y={height - 6}
+                  fontSize={Theme.typography.sizes.xs}
+                  fill={Theme.colors.textMuted}
+                  textAnchor="middle"
+                >
+                  {lbl}
+                </SvgText>
+              );
             })}
         </Svg>
       )}

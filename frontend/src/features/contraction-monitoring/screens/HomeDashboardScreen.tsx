@@ -5,6 +5,14 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import contractionApi from '../api/contractionApi';
+import {
+  formatDurationSeconds,
+  formatInterval,
+  formatSessionDate,
+  formatClockTime,
+  formatSessionLength,
+  formatShortChartDate,
+} from '../../../core/utils/timeFormat';
 
 export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -27,11 +35,7 @@ export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation 
           const latest = sessions[0];
           setLatestStats({
             ...latest.stats,
-            date: new Date(latest.session.startTime).toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            }),
+            date: formatSessionDate(latest.session.startTime),
           });
         }
       } catch (err) {
@@ -93,13 +97,11 @@ export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation 
                 </View>
                 <View style={styles.gridItem}>
                   <Caption>Avg Duration</Caption>
-                  <Subheading style={styles.metricVal}>{latestStats.averageDuration}s</Subheading>
+                  <Subheading style={styles.metricVal}>{formatDurationSeconds(latestStats.averageDuration)}</Subheading>
                 </View>
                 <View style={styles.gridItem}>
                   <Caption>Avg Interval</Caption>
-                  <Subheading style={styles.metricVal}>
-                    {latestStats.averageInterval > 0 ? `${Math.round(latestStats.averageInterval / 60)}m` : 'N/A'}
-                  </Subheading>
+                  <Subheading style={styles.metricVal}>{formatInterval(latestStats.averageInterval)}</Subheading>
                 </View>
                 <View style={styles.gridItem}>
                   <Caption>Peak Tension</Caption>

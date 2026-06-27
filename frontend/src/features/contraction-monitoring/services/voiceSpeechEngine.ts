@@ -1,56 +1,92 @@
 import { Platform } from 'react-native';
+import Tts from 'react-native-tts';
 
 export type LanguageCode = 'en' | 'es' | 'fr';
 
 const SPEECH_STRINGS: Record<LanguageCode, Record<string, string>> = {
   en: {
     calibration_started: 'Calibration started. Please sit or lie comfortably and remain still.',
-    please_remain_still: 'Please remain still. We are analyzing baseline readings.',
-    calibration_completed: 'Calibration completed successfully. Ready to start monitoring.',
-    calibration_failed: 'Calibration failed. Please adjust the belt positioning and try again.',
+    please_remain_still: 'Please remain still. We are recording baseline readings.',
+    calibration_completed: 'Calibration completed successfully. You may start monitoring.',
+    calibration_failed: 'Calibration failed. Please adjust the belt and try again.',
     monitoring_started: 'Monitoring started. Live readings are active.',
-    contraction_detected: 'Contraction detected. Please confirm your contraction.',
-    please_confirm_contraction: 'Please confirm if you are experiencing a contraction.',
-    recording_in_progress: 'Recording in progress.',
-    contraction_ended: 'Contraction ended. Resuming normal baseline monitoring.',
+    contraction_detected: 'Contraction detected.',
+    please_confirm_contraction: 'Contraction recorded. Please confirm if needed.',
+    high_intensity: 'High intensity detected. Please remain calm and breathe steadily.',
+    recording_in_progress: 'Manual recording in progress.',
+    contraction_ended: 'Contraction ended. Returning to baseline monitoring.',
     monitoring_resumed: 'Monitoring resumed.',
-    monitoring_completed: 'Monitoring completed. Saving session details.',
+    monitoring_completed: 'Monitoring completed. Saving your session.',
   },
   es: {
-    calibration_started: 'Calibración iniciada. Por favor, siéntese o acuéstese cómodamente y quédese quieta.',
-    please_remain_still: 'Por favor, quédese quieta. Estamos analizando las lecturas iniciales.',
-    calibration_completed: 'Calibración completada con éxito. Listo para iniciar monitoreo.',
-    calibration_failed: 'Calibración fallida. Por favor, ajuste el cinturón e intente de nuevo.',
+    calibration_started: 'Calibración iniciada. Siéntese o acuéstese cómodamente y quédese quieta.',
+    please_remain_still: 'Quédese quieta. Estamos registrando lecturas base.',
+    calibration_completed: 'Calibración completada. Puede iniciar el monitoreo.',
+    calibration_failed: 'Calibración fallida. Ajuste el cinturón e intente de nuevo.',
     monitoring_started: 'Monitoreo iniciado. Lecturas en vivo activas.',
-    contraction_detected: 'Contracción detectada. Por favor, confirme su contracción.',
-    please_confirm_contraction: 'Por favor confirme si está experimentando una contracción.',
-    recording_in_progress: 'Grabación en progreso.',
-    contraction_ended: 'Contracción terminada. Reanudando monitoreo normal.',
+    contraction_detected: 'Contracción detectada.',
+    please_confirm_contraction: 'Contracción registrada. Confirme si es necesario.',
+    high_intensity: 'Alta intensidad detectada. Mantenga la calma y respire.',
+    recording_in_progress: 'Grabación manual en progreso.',
+    contraction_ended: 'Contracción terminada. Volviendo al monitoreo base.',
     monitoring_resumed: 'Monitoreo reanudado.',
-    monitoring_completed: 'Monitoreo completado. Guardando detalles de la sesión.',
+    monitoring_completed: 'Monitoreo completado. Guardando su sesión.',
   },
   fr: {
-    calibration_started: 'Calibration commencée. Veuillez vous asseoir ou vous allonger confortablement et rester immobile.',
-    please_remain_still: 'Veuillez rester immobile. Nous analysons les lectures de base.',
-    calibration_completed: 'Calibration réussie. Prêt à démarrer la surveillance.',
-    calibration_failed: 'Échec de la calibration. Veuillez ajuster la ceinture et réessayer.',
-    monitoring_started: 'Surveillance démarrée. Les lectures en direct sont actives.',
-    contraction_detected: 'Contraction détectée. Veuillez confirmer votre contraction.',
-    please_confirm_contraction: 'Veuillez confirmer si vous ressentez une contraction.',
-    recording_in_progress: 'Enregistrement en cours.',
-    contraction_ended: 'Contraction terminée. Reprise de la surveillance de base.',
+    calibration_started: 'Calibration commencée. Asseyez-vous ou allongez-vous confortablement.',
+    please_remain_still: 'Restez immobile. Enregistrement des lectures de base.',
+    calibration_completed: 'Calibration réussie. Vous pouvez démarrer la surveillance.',
+    calibration_failed: 'Échec de calibration. Ajustez la ceinture et réessayez.',
+    monitoring_started: 'Surveillance démarrée. Lectures en direct actives.',
+    contraction_detected: 'Contraction détectée.',
+    please_confirm_contraction: 'Contraction enregistrée. Confirmez si nécessaire.',
+    high_intensity: 'Intensité élevée détectée. Restez calme et respirez.',
+    recording_in_progress: 'Enregistrement manuel en cours.',
+    contraction_ended: 'Contraction terminée. Retour à la surveillance de base.',
     monitoring_resumed: 'Surveillance reprise.',
-    monitoring_completed: 'Surveillance terminée. Enregistrement des détails de la session.',
-  }
+    monitoring_completed: 'Surveillance terminée. Enregistrement de la session.',
+  },
+};
+
+const LANG_MAP: Record<LanguageCode, string> = {
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
 };
 
 export class VoiceSpeechEngine {
   private static instance: VoiceSpeechEngine;
   private isMuted = false;
-  private volume = 1.0; // scale of 0 to 1
+  private volume = 1.0;
   private currentLanguage: LanguageCode = 'en';
+  private ttsReady = false;
+  private speakQueue: string[] = [];
+  private isSpeaking = false;
 
-  private constructor() {}
+  private constructor() {
+    this.initTts();
+  }
+
+  private async initTts() {
+    if (Platform.OS === 'web') return;
+    try {
+      await Tts.getInitStatus();
+      Tts.setDefaultRate(0.48);
+      Tts.setDefaultPitch(1.0);
+      Tts.addEventListener('tts-finish', () => {
+        this.isSpeaking = false;
+        this.processQueue();
+      });
+      Tts.addEventListener('tts-cancel', () => {
+        this.isSpeaking = false;
+        this.processQueue();
+      });
+      this.ttsReady = true;
+      await Tts.setDefaultLanguage(LANG_MAP[this.currentLanguage]);
+    } catch {
+      this.ttsReady = false;
+    }
+  }
 
   public static getInstance(): VoiceSpeechEngine {
     if (!VoiceSpeechEngine.instance) {
@@ -61,17 +97,22 @@ export class VoiceSpeechEngine {
 
   public setMute(mute: boolean) {
     this.isMuted = mute;
-    console.log(`🔊 Voice Guidance Mute state set to: ${mute}`);
+    if (mute) Tts.stop();
   }
 
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1.0, vol));
-    console.log(`🔊 Voice Guidance Volume set to: ${this.volume}`);
   }
 
-  public setLanguage(lang: LanguageCode) {
+  public async setLanguage(lang: LanguageCode) {
     this.currentLanguage = lang;
-    console.log(`🔊 Voice Guidance Language switched to: ${lang}`);
+    if (this.ttsReady) {
+      try {
+        await Tts.setDefaultLanguage(LANG_MAP[lang]);
+      } catch {
+        // language pack may be unavailable
+      }
+    }
   }
 
   public getMutedState(): boolean {
@@ -86,37 +127,39 @@ export class VoiceSpeechEngine {
     return this.currentLanguage;
   }
 
-  /**
-   * Speaks the localized string corresponding to a key
-   */
-  public speak(key: string) {
-    if (this.isMuted) return;
+  private processQueue() {
+    if (this.isSpeaking || this.speakQueue.length === 0 || this.isMuted) return;
+    const next = this.speakQueue.shift();
+    if (next) this.speakNow(next);
+  }
 
-    const message = SPEECH_STRINGS[this.currentLanguage][key] || key;
-    console.log(`🗣️ Speaking audio cue (${this.currentLanguage}) [Volume: ${this.volume}]: "${message}"`);
-
-    // In a real Expo or bare React Native project, we integrate standard Text-To-Speech:
-    // import * as Speech from 'expo-speech';
-    // Speech.speak(message, { volume: this.volume, language: this.currentLanguage });
-    // Or in React Native bare:
-    // Tts.speak(message);
-    
-    // We supply a cross-platform mock-fallback inside JS console as safety:
+  private speakNow(message: string) {
     if (Platform.OS === 'web') {
       const webWindow = globalThis as typeof globalThis & {
-        speechSynthesis?: { speak: (u: unknown) => void };
-        SpeechSynthesisUtterance?: new (text: string) => {
-          volume: number;
-          lang: string;
-        };
+        speechSynthesis?: { speak: (u: unknown) => void; cancel: () => void };
+        SpeechSynthesisUtterance?: new (text: string) => { volume: number; lang: string };
       };
       if (webWindow.speechSynthesis && webWindow.SpeechSynthesisUtterance) {
+        webWindow.speechSynthesis.cancel();
         const utterance = new webWindow.SpeechSynthesisUtterance(message);
         utterance.volume = this.volume;
-        utterance.lang = this.currentLanguage === 'en' ? 'en-US' : this.currentLanguage === 'es' ? 'es-ES' : 'fr-FR';
+        utterance.lang = LANG_MAP[this.currentLanguage];
         webWindow.speechSynthesis.speak(utterance);
       }
+      return;
     }
+
+    if (!this.ttsReady) return;
+    this.isSpeaking = true;
+    Tts.stop();
+    Tts.speak(message);
+  }
+
+  public speak(key: string) {
+    if (this.isMuted) return;
+    const message = SPEECH_STRINGS[this.currentLanguage][key] || key;
+    this.speakQueue.push(message);
+    this.processQueue();
   }
 }
 

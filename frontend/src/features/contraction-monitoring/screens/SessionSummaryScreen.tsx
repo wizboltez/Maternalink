@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import contractionApi from '../api/contractionApi';
-
-interface ContractionReadItem {
-  timestamp: string;
-  duration?: number;
-  interval?: number;
-  intensity?: number;
-}
+import { printSessionPdf } from '../../../core/services/pdfExportService';
+import {
+  formatDurationSeconds,
+  formatInterval,
+  formatSessionLength,
+  formatClockTime,
+} from '../../../core/utils/timeFormat';
 
 export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
-  const sessionId = route.params?.sessionId || '6674681144f8dc05b2ee13c1';
-  
+  const sessionId = route.params?.sessionId;
+
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState<{
     totalContractions: number;
     averageDuration: number;
@@ -24,51 +25,60 @@ export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = (
     peakIntensity: number;
     sessionDurationMinutes: number;
   } | null>(null);
-  
-  const [contractions, setContractions] = useState<ContractionReadItem[]>([]);
+
+  const [contractions, setContractions] = useState<
+    { timestamp: string; duration?: number; interval?: number; intensity?: number }[]
+  >([]);
 
   useEffect(() => {
+    if (!sessionId) return;
     const fetchSummary = async () => {
       try {
         const data = await contractionApi.getSessionDetails(sessionId);
         setStats(data.stats);
-        
-        // Filter out readings that are flagged as actual contractions
+
         const filtered = data.readings
           .filter((r: any) => r.isContraction)
           .map((r: any) => ({
-            timestamp: new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: formatClockTime(r.timestamp),
             duration: r.duration,
             interval: r.interval,
             intensity: r.intensity,
           }));
-        
+
         setContractions(filtered);
-      } catch (err: any) {
-        Alert.alert('Load Error', 'Failed to retrieve session statistics details.');
+      } catch {
+        Alert.alert('Load Error', 'Failed to retrieve session details.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchSummary();
   }, [sessionId]);
 
-  const handleExportPdf = () => {
-    const url = contractionApi.getPdfReportUrl(sessionId);
-    Linking.openURL(url).catch(() => Alert.alert('Export Error', 'Cannot launch browser download.'));
+  const handleExportPdf = async () => {
+    if (!sessionId) return;
+    setExporting(true);
+    try {
+      await printSessionPdf(sessionId);
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleExportCsv = () => {
-    const url = contractionApi.getCsvReportUrl(sessionId);
-    Linking.openURL(url).catch(() => Alert.alert('Export Error', 'Cannot launch browser download.'));
-  };
+  if (!sessionId) {
+    return (
+      <View style={styles.loaderContainer}>
+        <BodyText>Invalid session.</BodyText>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
-        <Caption style={styles.loadingText}>Compiling reports statistics...</Caption>
+        <Caption style={styles.loadingText}>Loading session summary...</Caption>
       </View>
     );
   }
@@ -77,33 +87,31 @@ export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = (
     <View style={styles.container}>
       <View style={styles.header}>
         <Heading style={styles.title}>Session Summary</Heading>
-        <BodyText style={styles.subtitle}>
-          Analysis summary and contraction metrics tables.
-        </BodyText>
+        <BodyText style={styles.subtitle}>Review metrics and export a PDF report for this session.</BodyText>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Main stats card grid */}
         {stats && (
           <Card style={styles.statsCard}>
             <Subheading style={styles.statsTitle}>Session Metrics</Subheading>
-
             <View style={styles.grid}>
               <View style={styles.gridItem}>
-                <Caption>Total Contractions</Caption>
+                <Caption>Session Length</Caption>
+                <Heading style={styles.statVal}>{formatSessionLength(stats.sessionDurationMinutes)}</Heading>
+              </View>
+              <View style={styles.gridItem}>
+                <Caption>Contractions</Caption>
                 <Heading style={styles.statVal}>{stats.totalContractions}</Heading>
               </View>
               <View style={styles.gridItem}>
                 <Caption>Avg Duration</Caption>
-                <Heading style={styles.statVal}>{stats.averageDuration}s</Heading>
+                <Heading style={styles.statVal}>{formatDurationSeconds(stats.averageDuration)}</Heading>
               </View>
               <View style={styles.gridItem}>
                 <Caption>Avg Interval</Caption>
-                <Heading style={styles.statVal}>
-                  {stats.averageInterval > 0 ? `${Math.round(stats.averageInterval / 60)}m` : 'N/A'}
-                </Heading>
+                <Heading style={styles.statVal}>{formatInterval(stats.averageInterval)}</Heading>
               </View>
-              <View style={styles.gridItem}>
+              <View style={[styles.gridItem, styles.fullWidthItem]}>
                 <Caption>Peak Intensity</Caption>
                 <Heading style={styles.statVal}>{Math.round(stats.peakIntensity)}%</Heading>
               </View>
@@ -111,25 +119,23 @@ export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = (
           </Card>
         )}
 
-        {/* Detailed Timeline list */}
         <Card style={styles.timelineCard}>
-          <Subheading style={styles.timelineHeader}>Contractions Log</Subheading>
-          
+          <Subheading style={styles.timelineHeader}>Contraction Timeline</Subheading>
           {contractions.length === 0 ? (
-            <Caption style={styles.emptyText}>No contractions registered during this session.</Caption>
+            <Caption style={styles.emptyText}>No contractions recorded in this session.</Caption>
           ) : (
             contractions.map((c, idx) => (
               <View key={idx} style={styles.row}>
                 <View>
-                  <BodyText style={styles.timeLabel}>#{contractions.length - idx} at {c.timestamp}</BodyText>
-                  {c.interval && (
-                    <Caption style={styles.intervalText}>
-                      Interval: {Math.round(c.interval / 60)} min {c.interval % 60} sec
-                    </Caption>
+                  <BodyText style={styles.timeLabel}>
+                    #{contractions.length - idx} at {c.timestamp}
+                  </BodyText>
+                  {c.interval != null && c.interval > 0 && (
+                    <Caption style={styles.intervalText}>Interval: {formatInterval(c.interval)}</Caption>
                   )}
                 </View>
                 <View style={styles.durationCol}>
-                  <BodyText style={styles.durationVal}>{c.duration}s</BodyText>
+                  <BodyText style={styles.durationVal}>{formatDurationSeconds(c.duration)}</BodyText>
                   <Caption>Duration</Caption>
                 </View>
               </View>
@@ -137,32 +143,16 @@ export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = (
           )}
         </Card>
 
-        {/* Medical disclaimer reminder */}
-        <Card style={styles.disclaimerCard}>
-          <Subheading style={styles.warnTitle}>⚠️ Safety Notice</Subheading>
-          <BodyText style={styles.disclaimerText}>
-            These contraction indicators are for support and pattern tracking only. They should never replace clinical judgment. If you feel unwell or suspect real labor, immediately contact your obstetric provider or emergency hospital.
-          </BodyText>
-        </Card>
-
-        {/* Export buttons row */}
-        <View style={styles.btnRow}>
-          <Button
-            title="Export CSV Data"
-            variant="outline"
-            onPress={handleExportCsv}
-            style={styles.halfBtn}
-          />
-          <Button
-            title="Export PDF Report"
-            onPress={handleExportPdf}
-            style={styles.halfBtn}
-          />
-        </View>
+        <Button
+          title={exporting ? 'Opening Print Dialog...' : 'Print / Export PDF Report'}
+          onPress={handleExportPdf}
+          loading={exporting}
+          style={styles.exportBtn}
+        />
 
         <Button
-          title="Return to Dashboard"
-          variant="secondary"
+          title="Back to Monitoring"
+          variant="outline"
           onPress={() => navigation.navigate('MonitoringHome')}
           style={styles.exitBtn}
         />
@@ -172,45 +162,16 @@ export const SessionSummaryScreen: React.FC<{ route: any; navigation: any }> = (
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: Theme.spacing.md,
-  },
-  header: {
-    paddingHorizontal: Theme.spacing.xl,
-    paddingTop: Theme.spacing.xxl,
-    paddingBottom: Theme.spacing.md,
-  },
-  title: {
-    color: Theme.colors.primaryDark,
-  },
-  subtitle: {
-    color: Theme.colors.textSecondary,
-    marginTop: Theme.spacing.xs,
-  },
-  scroll: {
-    padding: Theme.spacing.xl,
-  },
-  statsCard: {
-    padding: Theme.spacing.lg,
-  },
-  statsTitle: {
-    color: Theme.colors.text,
-    marginBottom: Theme.spacing.md,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
+  container: { flex: 1, backgroundColor: Theme.colors.background },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: Theme.spacing.md },
+  header: { paddingHorizontal: Theme.spacing.xl, paddingTop: Theme.spacing.xxl, paddingBottom: Theme.spacing.md },
+  title: { color: Theme.colors.primaryDark },
+  subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs },
+  scroll: { padding: Theme.spacing.xl, paddingBottom: 80 },
+  statsCard: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.md },
+  statsTitle: { color: Theme.colors.text, marginBottom: Theme.spacing.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   gridItem: {
     width: '48%',
     padding: Theme.spacing.md,
@@ -220,13 +181,9 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.md,
     alignItems: 'center',
   },
-  statVal: {
-    color: Theme.colors.primary,
-    marginTop: Theme.spacing.xs,
-  },
-  timelineCard: {
-    padding: Theme.spacing.lg,
-  },
+  fullWidthItem: { width: '100%' },
+  statVal: { color: Theme.colors.primary, marginTop: Theme.spacing.xs, fontSize: Theme.typography.sizes.lg },
+  timelineCard: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.md },
   timelineHeader: {
     color: Theme.colors.text,
     borderBottomWidth: 1,
@@ -234,10 +191,7 @@ const styles = StyleSheet.create({
     paddingBottom: Theme.spacing.sm,
     marginBottom: Theme.spacing.md,
   },
-  emptyText: {
-    textAlign: 'center',
-    paddingVertical: Theme.spacing.md,
-  },
+  emptyText: { textAlign: 'center', paddingVertical: Theme.spacing.md },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -246,47 +200,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.divider,
   },
-  timeLabel: {
-    color: Theme.colors.text,
-    fontWeight: Theme.typography.weights.medium,
-  },
-  intervalText: {
-    marginTop: 2,
-  },
-  durationCol: {
-    alignItems: 'flex-end',
-  },
-  durationVal: {
-    color: Theme.colors.primary,
-    fontWeight: Theme.typography.weights.semibold,
-  },
-  disclaimerCard: {
-    borderColor: Theme.colors.danger,
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
-    padding: Theme.spacing.lg,
-  },
-  warnTitle: {
-    color: Theme.colors.danger,
-    marginBottom: Theme.spacing.sm,
-  },
-  disclaimerText: {
-    fontSize: Theme.typography.sizes.sm,
-    color: Theme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: Theme.spacing.md,
-  },
-  halfBtn: {
-    flex: 1,
-    marginHorizontal: Theme.spacing.xs,
-  },
-  exitBtn: {
-    marginTop: Theme.spacing.xs,
-    marginBottom: Theme.spacing.xxl,
-  },
+  timeLabel: { color: Theme.colors.text, fontWeight: Theme.typography.weights.medium },
+  intervalText: { marginTop: 2 },
+  durationCol: { alignItems: 'flex-end' },
+  durationVal: { color: Theme.colors.primary, fontWeight: Theme.typography.weights.semibold },
+  exportBtn: { marginBottom: Theme.spacing.sm },
+  exitBtn: { marginBottom: Theme.spacing.xxl },
 });
+
 export default SessionSummaryScreen;

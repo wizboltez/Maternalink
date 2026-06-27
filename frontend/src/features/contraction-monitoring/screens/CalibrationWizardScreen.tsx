@@ -6,9 +6,10 @@ import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import contractionApi from '../api/contractionApi';
 import voiceSpeechEngine from '../services/voiceSpeechEngine';
+import bluetoothService from '../../../core/services/bluetoothService';
 
 export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
-  const deviceId = route.params?.deviceId || '6674681144f8dc05b2ee13c1'; // Fallback to mock device ID if missing
+  const deviceId: string | undefined = route.params?.deviceId;
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -26,21 +27,33 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
   const [confidence, setConfidence] = useState<number | null>(null);
   const [calibrationSessionId, setCalibrationSessionId] = useState<string | null>(null);
 
-  // Step 2 Relaxation Phase countdown timer
+  // Step 2: collect real BLE readings when belt connected, else simulated fallback
   useEffect(() => {
     let timerId: NodeJS.Timeout;
+
+    bluetoothService.setTelemetryCallback((telemetry) => {
+      if (isSampling && telemetry.rawAdc != null) {
+        setRelaxationReadings((prev) => [...prev, telemetry.rawAdc!]);
+      }
+    });
+
     if (isSampling && countdown > 0) {
       timerId = setInterval(() => {
         setCountdown((prev) => prev - 1);
-        // Simulate reading raw ADC values from belt (normal range 1100 - 1300 with slight jitter)
-        const reading = Math.round(1200 + (Math.random() - 0.5) * 50);
-        setRelaxationReadings((prev) => [...prev, reading]);
+        if (!bluetoothService.isConnected()) {
+          const reading = Math.round(1200 + (Math.random() - 0.5) * 50);
+          setRelaxationReadings((prev) => [...prev, reading]);
+        }
       }, 1000);
     } else if (isSampling && countdown === 0) {
       setIsSampling(false);
       processRelaxationData();
     }
-    return () => clearInterval(timerId);
+
+    return () => {
+      clearInterval(timerId);
+      if (!isSampling) bluetoothService.setTelemetryCallback(null);
+    };
   }, [isSampling, countdown]);
 
   const startRelaxationSampling = () => {
@@ -48,6 +61,7 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
     setCountdown(10);
     setIsSampling(true);
     voiceSpeechEngine.speak('calibration_started');
+    setTimeout(() => voiceSpeechEngine.speak('please_remain_still'), 1500);
   };
 
   const processRelaxationData = async () => {
@@ -59,10 +73,9 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
       setBaseline(data.baseline);
       setSensorNoise(data.sensorNoise);
       setConfidence(data.confidence);
-
-      voiceSpeechEngine.speak('please_remain_still');
-      setStep(3); // Proceed to step 3 Maximum Stretch
+      setStep(3);
     } catch (err: any) {
+      voiceSpeechEngine.speak('calibration_failed');
       Alert.alert('Processing Failed', err.response?.data?.error || 'Unable to analyze baseline noise.');
       setStep(1); // Reset
     } finally {
@@ -70,15 +83,30 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
     }
   };
 
+  const [peakAdcReadings, setPeakAdcReadings] = useState<number[]>([]);
+
   const recordMaxStretch = () => {
     setLoading(true);
-    // Simulate maximum stretch flexMax value (around 2600 - 3000 ADC)
+    voiceSpeechEngine.speak('please_remain_still');
+    setPeakAdcReadings([]);
+
+    const samples: number[] = [];
+    const collect = (telemetry: { rawAdc?: number }) => {
+      if (telemetry.rawAdc != null) samples.push(telemetry.rawAdc);
+    };
+    bluetoothService.setTelemetryCallback(collect);
+
     setTimeout(async () => {
-      const maxAdcVal = Math.round(2800 + (Math.random() - 0.5) * 100);
+      bluetoothService.setTelemetryCallback(null);
+      const maxAdcVal =
+        samples.length > 0
+          ? Math.max(...samples)
+          : Math.round(2800 + (Math.random() - 0.5) * 100);
       setFlexMax(maxAdcVal);
+      setPeakAdcReadings(samples);
       setLoading(false);
-      setStep(4); // Verify and save
-    }, 1500);
+      setStep(4);
+    }, 3000);
   };
 
   const saveCalibration = async () => {
@@ -90,7 +118,7 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
     setLoading(true);
     try {
       const result = await contractionApi.saveCalibration({
-        deviceId,
+        deviceId: deviceId!,
         flexMin,
         flexMax,
         baseline,
@@ -102,6 +130,7 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
       voiceSpeechEngine.speak('calibration_completed');
       setStep(5); // Complete calibration
     } catch (err: any) {
+      voiceSpeechEngine.speak('calibration_failed');
       Alert.alert('Calibration Failed', err.response?.data?.error || 'Validation gap check failed.');
       setStep(1); // Reset back to instructions
     } finally {
@@ -280,10 +309,10 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
                 }
                 setLoading(true);
                 try {
-                  const result = await contractionApi.startSession(deviceId, calibrationSessionId);
+                  const result = await contractionApi.startSession(deviceId!, calibrationSessionId);
                   navigation.navigate('LiveMonitoring', {
                     sessionId: result.session._id,
-                    deviceId,
+                    deviceId: deviceId!,
                     calibrationConfidence: confidence,
                   });
                 } catch (err: any) {
@@ -299,6 +328,14 @@ export const CalibrationWizardScreen: React.FC<{ route: any; navigation: any }> 
         );
     }
   };
+
+  if (!deviceId) {
+    return (
+      <View style={styles.container}>
+        <BodyText style={{ padding: Theme.spacing.xl }}>No belt selected. Connect a belt first.</BodyText>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
