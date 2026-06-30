@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Alert } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -76,12 +76,7 @@ export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation 
             style={styles.actionBtn}
           />
 
-          <Button
-            title="Manual Contraction Tracker"
-            variant="outline"
-            onPress={() => navigation.navigate('ManualRecording')}
-            style={styles.manualBtn}
-          />
+          
         </Card>
 
         <Card style={styles.summaryCard}>

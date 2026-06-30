@@ -292,23 +292,20 @@ export class MonitoringController {
   }
 
   /**
-   * CSV Data Export Stream
+   * Combined PDF export for all valid user sessions
    */
-  public static async exportCsv(req: AuthenticatedRequest, res: Response) {
+  public static async exportAllPdf(req: AuthenticatedRequest, res: Response) {
     try {
-      const { sessionId } = req.params;
+      const userId = req.user?.userId;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized.' });
 
-      const session = await MonitoringSession.findById(sessionId);
-      if (!session) return res.status(404).json({ error: 'Session not found.' });
+      const pdfBuffer = await ExportService.exportAllToPdf(userId);
 
-      const readings = await ContractionReading.find({ monitoringSessionId: sessionId }).sort({ timestamp: 1 });
-      const csvString = await ExportService.exportToCsv(session, readings);
-
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=contraction_data_${sessionId}.csv`);
-      return res.status(200).send(csvString);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=contraction_full_history.pdf');
+      return res.status(200).send(pdfBuffer);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || 'Error generating CSV data.' });
+      return res.status(500).json({ error: error.message || 'Error generating combined PDF report.' });
     }
   }
 }

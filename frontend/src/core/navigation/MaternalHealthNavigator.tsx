@@ -40,7 +40,7 @@ export const MaternalHealthNavigator = () => {
       <Stack.Screen 
         name="HealthDashboard" 
         component={HealthDashboardScreen} 
-        options={{ title: 'Maternal Health' }} 
+        options={{ title: 'Maternal Health', headerLeft: () => null }} 
       />
       <Stack.Screen 
         name="HeartRateDetail" 

@@ -25,6 +25,7 @@ const PRIORITIES = [
 export const EmergencyContactsScreen: React.FC = () => {
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
 
@@ -39,10 +40,6 @@ export const EmergencyContactsScreen: React.FC = () => {
   const [relationModalVisible, setRelationModalVisible] = useState(false);
   const [priorityModalVisible, setPriorityModalVisible] = useState(false);
 
-  useEffect(() => {
-    loadContacts();
-  }, []);
-
   const loadContacts = async () => {
     setIsLoading(true);
     try {
@@ -54,6 +51,27 @@ export const EmergencyContactsScreen: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // const syncFromDevice = async (showFeedback: boolean) => {
+  //   setIsSyncing(true);
+  //   try {
+  //     const synced = await syncDeviceContactsToBackend();
+  //     setContacts(synced);
+  //     if (showFeedback) {
+  //       Alert.alert('Sync Complete', 'Device contacts matching ICE, Emergency, or SOS have been synced.');
+  //     }
+  //   } catch (error: any) {
+  //     if (showFeedback) {
+  //       Alert.alert('Sync Failed', error.message || 'Failed to sync device contacts.');
+  //     }
+  //   } finally {
+  //     setIsSyncing(false);
+  //   }
+  // };
+
+  useEffect(() => {
+  loadContacts();
+}, []);
 
   const openAddModal = () => {
     setEditingContact(null);
@@ -182,6 +200,7 @@ export const EmergencyContactsScreen: React.FC = () => {
       <View style={styles.header}>
         <Heading style={styles.title}>Emergency Contacts</Heading>
         <BodyText style={styles.subtitle}>People to notify in case of an alert</BodyText>
+        
       </View>
 
       {isLoading && contacts.length === 0 ? (
@@ -389,6 +408,7 @@ export const EmergencyContactsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
   header: { paddingHorizontal: Theme.spacing.xl, paddingTop: Theme.spacing.xxl, paddingBottom: Theme.spacing.md },
+  syncButton: { marginTop: Theme.spacing.md },
   title: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },

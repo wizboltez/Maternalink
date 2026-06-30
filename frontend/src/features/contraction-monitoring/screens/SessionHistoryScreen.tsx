@@ -5,6 +5,7 @@ import { Heading, Subheading, BodyText, Caption } from '../../../core/components
 import { Card } from '../../../core/components/Card';
 import { Button } from '../../../core/components/Button';
 import contractionApi from '../api/contractionApi';
+import { printAllSessionsPdf } from '../../../core/services/pdfExportService';
 import {
   formatDurationSeconds,
   formatInterval,
@@ -32,6 +33,7 @@ interface SessionItem {
 
 export const SessionHistoryScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
+  const [exportingAll, setExportingAll] = useState(false);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -91,6 +93,15 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
     );
   };
 
+  const handleExportAll = async () => {
+    setExportingAll(true);
+    try {
+      await printAllSessionsPdf();
+    } finally {
+      setExportingAll(false);
+    }
+  };
+
   const renderSessionItem = ({ item }: { item: SessionItem }) => {
     const isSelected = selectedIds.includes(item.session._id);
     const date = formatSessionDate(item.session.startTime);
@@ -145,6 +156,14 @@ Session B (${new Date(compSessions[1].session.startTime).toLocaleDateString()}):
         <BodyText style={styles.subtitle}>
           Search, filter, and compare contraction monitoring trends.
         </BodyText>
+        <Button
+          title="Export All Session History to PDF"
+          variant="outline"
+          size="small"
+          onPress={handleExportAll}
+          loading={exportingAll}
+          style={styles.exportAllBtn}
+        />
       </View>
 
       {/* Filter and search bars
@@ -216,6 +235,9 @@ const styles = StyleSheet.create({
   subtitle: {
     color: Theme.colors.textSecondary,
     marginTop: Theme.spacing.xs,
+  },
+  exportAllBtn: {
+    marginTop: Theme.spacing.md,
   },
   filtersSection: {
     paddingHorizontal: Theme.spacing.xl,

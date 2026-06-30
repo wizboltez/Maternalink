@@ -10,8 +10,6 @@ import {
 } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
-import { Card } from '../../../core/components/Card';
-import { Button } from '../../../core/components/Button';
 
 type HealthStatus = 'normal' | 'attention' | 'urgent';
 
@@ -46,8 +44,6 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
   const [contractionActive] = useState(false);
   const [contractionFrequency] = useState(2);
   const [isConnected] = useState(false);
-  const [batteryLevel] = useState(85);
-  const [syncPending] = useState(3);
 
   // Pulsing animation for heart rate card
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -115,18 +111,6 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
             />
             <Caption style={styles.statusPillText}>
               {isConnected ? 'Connected' : 'Disconnected'}
-            </Caption>
-          </View>
-          {/* Battery */}
-          <View style={styles.statusPill}>
-            <Text style={styles.statusEmoji}>🔋</Text>
-            <Caption style={styles.statusPillText}>{batteryLevel}%</Caption>
-          </View>
-          {/* Sync */}
-          <View style={styles.statusPill}>
-            <Text style={styles.statusEmoji}>☁️</Text>
-            <Caption style={styles.statusPillText}>
-              {syncPending > 0 ? `${syncPending}` : '✓'}
             </Caption>
           </View>
         </View>
@@ -282,17 +266,6 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
             <Caption style={styles.cardUnit}>{contractionFrequency}/hr frequency</Caption>
           )}
         </TouchableOpacity>
-      </View>
-
-      {/* Bottom Sync Button */}
-      <View style={styles.bottomActions}>
-        <Button
-          title={`☁️  Cloud Sync${syncPending > 0 ? ` (${syncPending} pending)` : ''}`}
-          variant="outline"
-          size="small"
-          onPress={() => navigation.navigate('SyncStatus')}
-          style={styles.syncButton}
-        />
       </View>
     </ScrollView>
   );

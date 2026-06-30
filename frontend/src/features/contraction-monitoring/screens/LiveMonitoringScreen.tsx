@@ -29,7 +29,7 @@ export const LiveMonitoringScreen: React.FC<{ route: any; navigation: any }> = (
 
   const {
     isConnected,
-    isBeltConnected,
+    isBleConnected,
     batteryLevel,
     sessionStartedAt,
     currentReading,
@@ -100,9 +100,9 @@ export const LiveMonitoringScreen: React.FC<{ route: any; navigation: any }> = (
 
       <View style={styles.statusBar}>
         <View style={styles.row}>
-          <View style={[styles.indicator, isBeltConnected ? styles.green : styles.red]} />
+          <View style={[styles.indicator, isBleConnected ? styles.green : styles.red]} />
           <Caption style={styles.statusText}>
-            Belt: {isBeltConnected ? 'Connected' : 'Not connected'}
+            Belt: {isBleConnected ? 'Connected' : 'Not connected'}
           </Caption>
         </View>
         <View style={styles.row}>

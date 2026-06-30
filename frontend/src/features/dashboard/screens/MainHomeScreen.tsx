@@ -11,9 +11,11 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
-  const dueDate = profile?.dueDate
-    ? new Date(profile.dueDate).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
+  const dueDate = profile?.dueDate || profile?.expectedDeliveryDate
+    ? new Date(profile.dueDate || profile.expectedDeliveryDate!).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
     : 'Not set';
+
+  const isProfileIncomplete = !profile || !profile.expectedDeliveryDate || !profile.weight;
 
   return (
     <View style={styles.container}>
@@ -33,6 +35,18 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, isTablet && styles.scrollTablet]}>
+        {isProfileIncomplete && (
+          <Card
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.warningCard}
+          >
+            <Subheading style={styles.warningTitle}>Complete Your Profile</Subheading>
+            <BodyText style={styles.warningText}>
+              Please add your expected delivery date and weight in Settings so we can personalise your guidance and monitoring.
+            </BodyText>
+          </Card>
+        )}
+
         <Card style={styles.heroCard}>
           <Subheading style={styles.heroTitle}>Your Pregnancy Journey</Subheading>
           <BodyText style={styles.heroText}>
@@ -42,10 +56,10 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
         <Subheading style={styles.sectionLabel}>Health & Wellness</Subheading>
         <View style={styles.grid}>
-          <Card onPress={() => navigation.navigate('Health')} style={styles.gridCard}>
+          <Card onPress={() => navigation.navigate('Vitals')} style={styles.gridCard}>
             <Subheading style={styles.cardIcon}>🩺</Subheading>
             <Subheading style={styles.cardTitle}>Health Hub</Subheading>
-            <Caption>Vitals, tips & weekly guidance</Caption>
+            <Caption>Vitals & maternal health</Caption>
           </Card>
 
           <Card onPress={() => navigation.navigate('Profile')} style={styles.gridCard}>
@@ -57,7 +71,7 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
         <Subheading style={styles.sectionLabel}>Smart Tools</Subheading>
         <Card
-          onPress={() => navigation.getParent()?.navigate('Monitoring')}
+          onPress={() => navigation.navigate('Monitoring')}
           style={styles.featureCard}
         >
           <View style={styles.featureRow}>
@@ -74,14 +88,22 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           </View>
         </Card>
 
-        <Card style={styles.infoCard}>
-          <Subheading style={styles.infoTitle}>Care Provider</Subheading>
-          <BodyText style={styles.infoText}>
-            {profile?.doctorName || 'Add your doctor in Profile settings'}
-          </BodyText>
-          <Caption style={styles.infoSub}>
-            Emergency: {profile?.emergencyContact || 'Not configured'}
-          </Caption>
+        <Card
+          onPress={() => navigation.navigate('Guidance')}
+          style={styles.featureCard}
+        >
+          <View style={styles.featureRow}>
+            <View style={styles.featureIconBox}>
+              <Subheading style={styles.featureIcon}>📋</Subheading>
+            </View>
+            <View style={styles.featureContent}>
+              <Subheading style={styles.featureTitle}>Weekly Guidance</Subheading>
+              <BodyText style={styles.featureDesc}>
+                AI-powered tips, exercises, and week-by-week pregnancy guidance tailored to your journey.
+              </BodyText>
+              <Caption style={styles.featureTag}>personalised</Caption>
+            </View>
+          </View>
         </Card>
       </ScrollView>
     </View>
@@ -108,6 +130,15 @@ const styles = StyleSheet.create({
   meta: { marginTop: 4, color: Theme.colors.accent },
   scroll: { padding: Theme.spacing.xl, paddingBottom: 80 },
   scrollTablet: { alignSelf: 'center', width: '100%', maxWidth: 800 },
+  warningCard: {
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
+    backgroundColor: Theme.colors.warning + '18',
+    borderColor: Theme.colors.warning,
+    borderWidth: 1,
+  },
+  warningTitle: { color: Theme.colors.warning, marginBottom: Theme.spacing.xs },
+  warningText: { color: Theme.colors.textSecondary, lineHeight: 20 },
   heroCard: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.lg, backgroundColor: Theme.colors.primaryLight },
   heroTitle: { color: Theme.colors.primaryDark, marginBottom: Theme.spacing.sm },
   heroText: { color: Theme.colors.textSecondary, lineHeight: 20 },
@@ -132,10 +163,6 @@ const styles = StyleSheet.create({
   featureTitle: { color: Theme.colors.text, marginBottom: 4 },
   featureDesc: { color: Theme.colors.textSecondary, fontSize: Theme.typography.sizes.sm, lineHeight: 18 },
   featureTag: { marginTop: Theme.spacing.sm, color: Theme.colors.accent },
-  infoCard: { padding: Theme.spacing.lg },
-  infoTitle: { color: Theme.colors.text, marginBottom: Theme.spacing.sm },
-  infoText: { color: Theme.colors.textSecondary },
-  infoSub: { marginTop: 4 },
 });
 
 export default MainHomeScreen;

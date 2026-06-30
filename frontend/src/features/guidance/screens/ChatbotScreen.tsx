@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Keyboard } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import Theme from '../../../core/theme/theme';
-import { Heading, BodyText, Caption } from '../../../core/components/Typography';
+import { BodyText, Caption } from '../../../core/components/Typography';
 import { useAuth } from '../../../core/context/AuthContext';
 import guidanceApi, { ChatMessageResponse } from '../api/guidanceApi';
 import { useMaternalHealth } from '../../maternal-health/hooks/useMaternalHealth';
-import { SosButton } from '../../../core/components/SosButton';
 
 interface ChatMessage {
   id: string;
@@ -98,16 +97,6 @@ export const ChatbotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-          <Heading style={styles.title}>AI Assistant</Heading>
-        </View>
-        <SosButton />
-      </View>
-
       <ScrollView 
         ref={scrollViewRef}
         style={styles.chatArea}
@@ -157,32 +146,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Theme.spacing.xxl + 10,
-    paddingBottom: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.lg,
-    backgroundColor: Theme.colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.divider,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backBtn: {
-    padding: 8,
-    marginRight: 8,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: Theme.colors.primary,
-  },
-  title: {
-    color: Theme.colors.primaryDark,
   },
   chatArea: {
     flex: 1,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
@@ -7,6 +7,7 @@ import { Button } from '../../../core/components/Button';
 import { useAuth } from '../../../core/context/AuthContext';
 import { getIsOfflineMode, setOfflineMode } from '../../../core/config/api';
 import { SosButton } from '../../../core/components/SosButton';
+
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, profile, logout } = useAuth();
