@@ -203,6 +203,110 @@ const ContractionReadingSchema = new Schema<IContractionReading>({
 // Compound index on session and timestamp for quick retrieval of time-series graphs
 ContractionReadingSchema.index({ monitoringSessionId: 1, timestamp: 1 });
 
+// --- EMERGENCY SCHEMAS & INTERFACES ---
+
+// Emergency Contact Interface
+export interface IEmergencyContact {
+  name: string;
+  relation: string;
+  phone: string;
+  whatsapp: string;
+  priority: number; // 1 = highest, etc.
+}
+
+export interface IEmergencyContacts extends Document {
+  userId: mongoose.Types.ObjectId;
+  contacts: IEmergencyContact[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Emergency Alert Interface
+export interface IEmergencyAlert extends Document {
+  userId: mongoose.Types.ObjectId;
+  triggerType: 'SOS_BUTTON' | 'HIGH_STRESS' | 'HIGH_HEART_RATE' | 'STRONG_CONTRACTIONS' | 'ABNORMAL_FETAL_HEARTBEAT' | 'FALL_DETECTED' | 'MULTIPLE_RISK_FACTORS';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  sensorSnapshot: Record<string, any>;
+  createdAt: Date;
+  status: 'active' | 'resolved';
+  notificationsSent: {
+    push: boolean;
+    whatsapp: boolean;
+  };
+}
+
+// Emergency Settings Interface
+export interface IEmergencySettings extends Document {
+  userId: mongoose.Types.ObjectId;
+  whatsappAlertsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  autoAlertsEnabled: boolean;
+  sosButtonEnabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const EmergencyContactSchema = new Schema<IEmergencyContact>({
+  name: { type: String, required: true, trim: true },
+  relation: { type: String, required: true, trim: true },
+  phone: { type: String, required: true, trim: true },
+  whatsapp: { type: String, required: true, trim: true },
+  priority: { type: Number, required: true, min: 1 },
+});
+
+const EmergencyContactsSchema = new Schema<IEmergencyContacts>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
+    contacts: [EmergencyContactSchema],
+  },
+  { timestamps: true, collection: 'emergencyContacts' }
+);
+
+const EmergencyAlertSchema = new Schema<IEmergencyAlert>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    triggerType: {
+      type: String,
+      enum: [
+        'SOS_BUTTON',
+        'HIGH_STRESS',
+        'HIGH_HEART_RATE',
+        'STRONG_CONTRACTIONS',
+        'ABNORMAL_FETAL_HEARTBEAT',
+        'FALL_DETECTED',
+        'MULTIPLE_RISK_FACTORS',
+      ],
+      required: true,
+    },
+    severity: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'critical'],
+      required: true,
+      default: 'medium',
+    },
+    message: { type: String, required: true },
+    sensorSnapshot: { type: Schema.Types.Mixed, default: {} },
+    status: { type: String, enum: ['active', 'resolved'], default: 'active' },
+    notificationsSent: {
+      push: { type: Boolean, default: false },
+      whatsapp: { type: Boolean, default: false },
+    },
+  },
+  { timestamps: true, collection: 'emergencyAlerts' }
+);
+
+const EmergencySettingsSchema = new Schema<IEmergencySettings>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true, index: true },
+    whatsappAlertsEnabled: { type: Boolean, default: true },
+    pushNotificationsEnabled: { type: Boolean, default: true },
+    autoAlertsEnabled: { type: Boolean, default: true },
+    sosButtonEnabled: { type: Boolean, default: true },
+  },
+  { timestamps: true, collection: 'emergencySettings' }
+);
+
 // Export Models
 export const User = mongoose.model<IUser>('User', UserSchema);
 export const PregnancyProfile = mongoose.model<IPregnancyProfile>('PregnancyProfile', PregnancyProfileSchema);
@@ -211,6 +315,10 @@ export const Device = mongoose.model<IDevice>('Device', DeviceSchema);
 export const CalibrationSession = mongoose.model<ICalibrationSession>('CalibrationSession', CalibrationSessionSchema);
 export const MonitoringSession = mongoose.model<IMonitoringSession>('MonitoringSession', MonitoringSessionSchema);
 export const ContractionReading = mongoose.model<IContractionReading>('ContractionReading', ContractionReadingSchema);
+export const EmergencyContacts = mongoose.model<IEmergencyContacts>('EmergencyContacts', EmergencyContactsSchema);
+export const EmergencyAlert = mongoose.model<IEmergencyAlert>('EmergencyAlert', EmergencyAlertSchema);
+export const EmergencySettings = mongoose.model<IEmergencySettings>('EmergencySettings', EmergencySettingsSchema);
+
 
 // Health Sync Reading Interface (sub-document)
 export interface IHealthSyncReading {

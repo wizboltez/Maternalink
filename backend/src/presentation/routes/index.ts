@@ -5,6 +5,7 @@ import { CalibrationController } from '../controllers/CalibrationController';
 import { MonitoringController } from '../controllers/MonitoringController';
 import { PregnancyProfileController } from '../controllers/PregnancyProfileController';
 import { GuidanceController } from '../controllers/GuidanceController';
+import emergencyRouter from './emergencyRoutes';
 import { HealthSyncController } from '../controllers/HealthSyncController';
 import { authMiddleware, validate } from '../../infrastructure/web/middlewares';
 
@@ -56,6 +57,9 @@ router.get('/monitoring/session/:sessionId', authMiddleware as any, MonitoringCo
 // --- Reports & Export Routes ---
 router.get('/monitoring/export/pdf/:sessionId', authMiddleware as any, MonitoringController.exportPdf);
 router.get('/monitoring/export/csv/:sessionId', authMiddleware as any, MonitoringController.exportCsv);
+
+// --- Emergency System Routes ---
+router.use('/emergency', emergencyRouter);
 
 // --- Health Sync Routes ---
 router.post('/health/sync', authMiddleware as any, validate(healthSyncSchema), HealthSyncController.syncBatch);

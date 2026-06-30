@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -111,14 +111,40 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         )}
 
         <Card style={styles.card}>
-          <Subheading style={styles.cardTitle}>App Settings</Subheading>
-          <View style={styles.switchRow}>
+          <Subheading style={styles.cardTitle}>Emergency Alert System</Subheading>
+          
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('EmergencyContacts')}
+          >
             <View>
-              <BodyText style={styles.switchLabel}>Offline Demo Mode</BodyText>
-              <Caption style={styles.switchDesc}>Run entirely offline with mock data</Caption>
+              <BodyText style={styles.menuTitle}>🚨 Emergency Contacts</BodyText>
+              <Caption style={styles.menuDesc}>Manage contacts notified during alerts</Caption>
             </View>
-            <Switch value={offlineMode} onValueChange={handleToggleOffline} trackColor={{ true: Theme.colors.primary }} />
-          </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('EmergencyAlertHistory')}
+          >
+            <View>
+              <BodyText style={styles.menuTitle}>🕒 Alert History Logs</BodyText>
+              <Caption style={styles.menuDesc}>View past emergency logs & vitals</Caption>
+            </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuRow, { borderBottomWidth: 0 }]}
+            onPress={() => navigation.navigate('EmergencySettings')}
+          >
+            <View>
+              <BodyText style={styles.menuTitle}>⚙️ Alert Configurations</BodyText>
+              <Caption style={styles.menuDesc}>Manage trigger rules & notifications</Caption>
+            </View>
+            <BodyText style={styles.menuArrow}>→</BodyText>
+          </TouchableOpacity>
         </Card>
 
         <Button title="Sign Out" variant="danger" onPress={handleLogout} style={styles.logoutBtn} />
@@ -156,6 +182,28 @@ const styles = StyleSheet.create({
   switchLabel: { color: Theme.colors.text, fontWeight: '500' },
   switchDesc: { color: Theme.colors.textMuted },
   version: { textAlign: 'center', marginTop: Theme.spacing.lg, marginBottom: Theme.spacing.xxl },
+  menuRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+  },
+  menuTitle: {
+    fontWeight: '600',
+    color: Theme.colors.text,
+  },
+  menuDesc: {
+    color: Theme.colors.textSecondary,
+    fontSize: Theme.typography.sizes.xs,
+    marginTop: 2,
+  },
+  menuArrow: {
+    color: Theme.colors.primary,
+    fontSize: Theme.typography.sizes.md,
+    fontWeight: 'bold',
+  },
 });
 
 export default ProfileScreen;
