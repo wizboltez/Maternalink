@@ -7,11 +7,11 @@ import { env } from '../../config/env';
 
 export class AuthController {
   /**
-   * Registers a new user and creates their pregnancy profile
+   * Registers a new user (profile is created separately)
    */
   public static async register(req: AuthenticatedRequest, res: Response) {
     try {
-      const { email, password, name, gestationalAgeWeeks, dueDate, doctorName, emergencyContact } = req.body;
+      const { email, password, name, age } = req.body;
 
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -21,26 +21,17 @@ export class AuthController {
 
       // Hash password
       const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
+      const hashedPassword = await bcrypt.hash(password, salt);
 
       // Create user
       const user = new User({
         email,
-        passwordHash,
+        password: hashedPassword,
         name,
+        age,
         role: 'mother',
       });
       await user.save();
-
-      // Create pregnancy profile
-      const profile = new PregnancyProfile({
-        userId: user._id,
-        gestationalAgeWeeks,
-        dueDate: new Date(dueDate),
-        doctorName,
-        emergencyContact,
-      });
-      await profile.save();
 
       // Generate JWT
       const token = jwt.sign({ userId: user._id, role: user.role }, env.JWT_SECRET, { expiresIn: '7d' });
@@ -52,14 +43,10 @@ export class AuthController {
           id: user._id,
           email: user.email,
           name: user.name,
+          age: user.age,
           role: user.role,
         },
-        profile: {
-          gestationalAgeWeeks: profile.gestationalAgeWeeks,
-          dueDate: profile.dueDate,
-          doctorName: profile.doctorName,
-          emergencyContact: profile.emergencyContact,
-        },
+        profile: null, // No profile created yet
       });
     } catch (error: any) {
       return res.status(500).json({ error: error.message || 'Error occurred during registration.' });
@@ -80,7 +67,7 @@ export class AuthController {
       }
 
       // Compare password
-      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ error: 'Invalid email or password.' });
       }
@@ -98,9 +85,17 @@ export class AuthController {
           id: user._id,
           email: user.email,
           name: user.name,
+          age: user.age,
           role: user.role,
         },
         profile: profile ? {
+          id: profile._id,
+          pregnancyWeek: profile.pregnancyWeek,
+          trimester: profile.trimester,
+          expectedDeliveryDate: profile.expectedDeliveryDate,
+          weight: profile.weight,
+          bloodGroup: profile.bloodGroup,
+          // backwards compatibility
           gestationalAgeWeeks: profile.gestationalAgeWeeks,
           dueDate: profile.dueDate,
           doctorName: profile.doctorName,
@@ -118,7 +113,7 @@ export class AuthController {
   public static async getProfile(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.user?.userId;
-      const user = await User.findById(userId).select('-passwordHash');
+      const user = await User.findById(userId).select('-password');
       if (!user) {
         return res.status(404).json({ error: 'User not found.' });
       }
@@ -126,8 +121,25 @@ export class AuthController {
       const profile = await PregnancyProfile.findOne({ userId });
 
       return res.status(200).json({
-        user,
-        profile,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          age: user.age,
+          role: user.role,
+        },
+        profile: profile ? {
+          id: profile._id,
+          pregnancyWeek: profile.pregnancyWeek,
+          trimester: profile.trimester,
+          expectedDeliveryDate: profile.expectedDeliveryDate,
+          weight: profile.weight,
+          bloodGroup: profile.bloodGroup,
+          gestationalAgeWeeks: profile.gestationalAgeWeeks,
+          dueDate: profile.dueDate,
+          doctorName: profile.doctorName,
+          emergencyContact: profile.emergencyContact,
+        } : null,
       });
     } catch (error: any) {
       return res.status(500).json({ error: error.message || 'Error fetching user profile.' });

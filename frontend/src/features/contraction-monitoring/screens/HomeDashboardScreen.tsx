@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -15,6 +15,8 @@ import {
 } from '../../../core/utils/timeFormat';
 
 export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isTablet = width > 768;
   const [loading, setLoading] = useState(true);
   const [latestStats, setLatestStats] = useState<{
     totalContractions: number;
@@ -61,7 +63,7 @@ export const HomeDashboardScreen: React.FC<{ navigation: any }> = ({ navigation 
         </BodyText>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, isTablet && styles.scrollTablet]}>
         <Card style={styles.launchCard}>
           <Subheading style={styles.sectionTitle}>Start a Session</Subheading>
           <BodyText style={styles.launchDescription}>
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
   title: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: 4, lineHeight: 18 },
   scroll: { padding: Theme.spacing.xl, paddingBottom: 80 },
+  scrollTablet: { alignSelf: 'center', width: '100%', maxWidth: 800 },
   launchCard: { padding: Theme.spacing.lg, marginBottom: Theme.spacing.md },
   sectionTitle: { color: Theme.colors.text, marginBottom: Theme.spacing.sm },
   launchDescription: {

@@ -1,12 +1,21 @@
-import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import Theme from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
+import { bluetoothService } from '../services/bluetoothService';
 
 import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import RegisterScreen from '../../features/auth/screens/RegisterScreen';
+import PregnancyProfileScreen from '../../features/profile/screens/PregnancyProfileScreen';
+import SplashScreen from '../../features/auth/screens/SplashScreen';
+
+export type AppStackParamList = {
+  Main: undefined;
+  PregnancyProfile: { isEdit: boolean } | undefined;
+};
+
+const Stack = createStackNavigator<AppStackParamList>();
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -16,14 +25,18 @@ export type AuthStackParamList = {
 const AuthStack = createStackNavigator<AuthStackParamList>();
 
 export const AppNavigator: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, profile } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
-      </View>
-    );
+  useEffect(() => {
+    if (!showSplash) {
+      // Request all permissions right when the app opens
+      bluetoothService.requestPermissions().catch(console.warn);
+    }
+  }, [showSplash]);
+
+  if (isLoading || showSplash) {
+    return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;
   }
 
   if (!isAuthenticated) {
@@ -41,16 +54,22 @@ export const AppNavigator: React.FC = () => {
     );
   }
 
-  return <MainTabNavigator />;
-};
+  // Force profile setup if it does not exist yet
+  if (!profile) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="PregnancyProfile" component={PregnancyProfileScreen} />
+      </Stack.Navigator>
+    );
+  }
 
-const styles = StyleSheet.create({
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Theme.colors.background,
-  },
-});
+  // Show primary tab navigators and register the Profile screen on stack to navigate to
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Main" component={MainTabNavigator} />
+      <Stack.Screen name="PregnancyProfile" component={PregnancyProfileScreen} />
+    </Stack.Navigator>
+  );
+};
 
 export default AppNavigator;

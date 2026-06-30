@@ -1,22 +1,36 @@
 import { NativeModules, Platform, PermissionsAndroid } from 'react-native';
 import { BleManager, Device, Characteristic, State } from 'react-native-ble-plx';
 
-export const MATERNALINK_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c5c6b0bf00';
-export const TELEMETRY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-export const BATTERY_CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a9';
-
-export interface ScannedDevice {
-  id: string;
-  name: string;
-  address: string;
-  type: 'ble' | 'classic' | 'dual';
-}
+// Maternalink Smart Belt BLE identifiers (must match ESP32 firmware)
+export const MATERNALINK_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
+export const TELEMETRY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
+// Battery is read from the telemetry JSON payload (no separate characteristic)
+export const BATTERY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
 
 export interface BeltTelemetry {
+  // Existing fields
   rawAdc?: number;
   flexPercent?: number;
   intensity?: number;
   batteryLevel?: number;
+  // NEW — MAX30102 (Heart Rate / SpO2)
+  heartRate?: number;
+  irValue?: number;
+  redValue?: number;
+  // NEW — DS18B20 (Temperature)
+  temperature?: number;
+  // NEW — GSR Sensor
+  gsrRaw?: number;
+  // NEW — MPU6050 (Accelerometer + Gyroscope)
+  accelX?: number;
+  accelY?: number;
+  accelZ?: number;
+  gyroX?: number;
+  gyroY?: number;
+  gyroZ?: number;
+  // NEW — Dual Flex Sensors
+  flex1?: number;
+  flex2?: number;
 }
 
 type TelemetryCallback = (data: BeltTelemetry) => void;
@@ -45,7 +59,7 @@ function decodeBleValue(base64: string): string {
 }
 
 class BluetoothService {
-  private bleManager: BleManager;
+  private manager: BleManager | null = null;
   private connectedDevice: Device | null = null;
   private telemetrySubscription: { remove: () => void } | null = null;
   private onTelemetry: TelemetryCallback | null = null;
@@ -53,7 +67,12 @@ class BluetoothService {
   private connectedDeviceName: string | null = null;
 
   constructor() {
-    this.bleManager = new BleManager();
+    try {
+      this.manager = new BleManager();
+    } catch (e) {
+      console.warn('BluetoothService: Native BleManager not available. Bluetooth features will be disabled (fallback mode enabled for Expo Go).', e);
+      this.manager = null;
+    }
   }
 
   setTelemetryCallback(cb: TelemetryCallback | null) {
@@ -87,15 +106,22 @@ class BluetoothService {
   }
 
   async isBluetoothEnabled(): Promise<boolean> {
-    if (Platform.OS === 'android' && BluetoothScanModule?.isBluetoothEnabled) {
-      return BluetoothScanModule.isBluetoothEnabled();
+    if (!this.manager) return false;
+    try {
+      const state = await this.manager.state();
+      return state === State.PoweredOn;
+    } catch {
+      return false;
     }
-    const state = await this.bleManager.state();
-    return state === State.PoweredOn;
   }
 
-  /** Scan classic + BLE devices using Android BluetoothManager / BluetoothAdapter */
-  async scanAllDevices(timeoutMs = 12000): Promise<ScannedDevice[]> {
+  async scanForDevices(
+    onDeviceFound: (device: Device) => void,
+    timeoutMs = 12000
+  ): Promise<void> {
+    if (!this.manager) {
+      throw new Error('Bluetooth scan is not supported in this environment (Expo Go). Please run the native development build or record manually.');
+    }
     const enabled = await this.isBluetoothEnabled();
     if (!enabled) {
       throw new Error('Bluetooth is turned off. Please enable it in Settings.');
@@ -118,27 +144,46 @@ class BluetoothService {
 
     // iOS fallback: BLE-only via ble-plx
     return new Promise((resolve, reject) => {
-      const found = new Map<string, ScannedDevice>();
-      this.bleManager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
-        if (error) {
-          this.bleManager.stopDeviceScan();
-          reject(error);
-          return;
+      const discovered = new Set<string>();
+
+      // Scan without service UUID filter first — many ESP32 boards don't
+      // include the service UUID in their advertisement packets.
+      this.manager!.startDeviceScan(
+        null,
+        { allowDuplicates: false },
+        (error, device) => {
+          if (error) {
+            this.manager!.stopDeviceScan();
+            reject(error);
+            return;
+          }
+          if (!device || !device.id || discovered.has(device.id)) {
+            return;
+          }
+
+          const name = device.name || device.localName || '';
+          const serviceUUIDs = device.serviceUUIDs || [];
+          const matchesName =
+            name.toLowerCase().includes('maternalink') ||
+            name.toLowerCase().includes('maternal') ||
+            name.toLowerCase().includes('smb') ||
+            name.toLowerCase().includes('esp32') ||
+            name.toLowerCase().includes('smart belt') ||
+            name.toLowerCase().includes('health');
+          const matchesUUID = serviceUUIDs.some(
+            (uuid: string) => uuid.toLowerCase() === MATERNALINK_SERVICE_UUID.toLowerCase()
+          );
+
+          if (matchesName || matchesUUID) {
+            discovered.add(device.id);
+            onDeviceFound(device);
+          }
         }
-        if (!device?.id) return;
-        if (!found.has(device.id)) {
-          found.set(device.id, {
-            id: device.id,
-            name: device.name || device.localName || 'Unknown Device',
-            address: device.id,
-            type: 'ble',
-          });
-        }
-      });
+      );
 
       setTimeout(() => {
-        this.bleManager.stopDeviceScan();
-        resolve(Array.from(found.values()));
+        this.manager!.stopDeviceScan();
+        resolve();
       }, timeoutMs);
     });
   }
@@ -177,6 +222,20 @@ class BluetoothService {
         flexPercent: data.flexPercent ?? data.flex,
         intensity: data.intensity,
         batteryLevel: data.batteryLevel ?? data.battery,
+        // Extended sensor data
+        heartRate: data.heartRate ?? data.hr,
+        irValue: data.irValue ?? data.ir,
+        redValue: data.redValue ?? data.red,
+        temperature: data.temperature ?? data.temp,
+        gsrRaw: data.gsrRaw ?? data.gsr,
+        accelX: data.accelX ?? data.ax,
+        accelY: data.accelY ?? data.ay,
+        accelZ: data.accelZ ?? data.az,
+        gyroX: data.gyroX ?? data.gx,
+        gyroY: data.gyroY ?? data.gy,
+        gyroZ: data.gyroZ ?? data.gz,
+        flex1: data.flex1 ?? data.f1,
+        flex2: data.flex2 ?? data.f2,
       };
     } catch {
       return null;
@@ -228,7 +287,7 @@ class BluetoothService {
 
   destroy(): void {
     this.disconnect();
-    this.bleManager.destroy();
+    this.manager?.destroy();
   }
 }
 

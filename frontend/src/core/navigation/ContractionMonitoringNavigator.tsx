@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import Theme from '../theme/theme';
+import { SosButton } from '../components/SosButton';
 
 import HomeDashboardScreen from '../../features/contraction-monitoring/screens/HomeDashboardScreen';
 import DeviceConnectionScreen from '../../features/contraction-monitoring/screens/DeviceConnectionScreen';
@@ -44,6 +45,7 @@ const screenOptions = {
   cardStyle: {
     backgroundColor: Theme.colors.background,
   },
+  headerRight: () => <SosButton />,
 };
 
 export const ContractionMonitoringNavigator: React.FC = () => {
