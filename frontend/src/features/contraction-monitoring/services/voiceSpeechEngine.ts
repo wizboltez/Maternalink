@@ -54,6 +54,16 @@ const LANG_MAP: Record<LanguageCode, string> = {
   fr: 'fr-FR',
 };
 
+type WebSpeechWindow = typeof globalThis & {
+  speechSynthesis?: { speak: (u: unknown) => void; cancel: () => void };
+  SpeechSynthesisUtterance?: new (text: string) => { volume: number; lang: string };
+};
+
+function hasWebSpeech(): boolean {
+  const webWindow = globalThis as WebSpeechWindow;
+  return !!(webWindow.speechSynthesis && webWindow.SpeechSynthesisUtterance);
+}
+
 export class VoiceSpeechEngine {
   private static instance: VoiceSpeechEngine;
   private isMuted = false;
@@ -68,7 +78,12 @@ export class VoiceSpeechEngine {
   }
 
   private async initTts() {
+    if (hasWebSpeech()) {
+      this.ttsReady = true;
+      return;
+    }
     if (Platform.OS === 'web') return;
+
     try {
       await Tts.getInitStatus();
       Tts.setDefaultRate(0.48);
@@ -97,7 +112,17 @@ export class VoiceSpeechEngine {
 
   public setMute(mute: boolean) {
     this.isMuted = mute;
-    if (mute) Tts.stop();
+    if (mute) {
+      try {
+        if (hasWebSpeech()) {
+          (globalThis as WebSpeechWindow).speechSynthesis?.cancel();
+        } else {
+          Tts.stop();
+        }
+      } catch {
+        // native TTS may be unavailable
+      }
+    }
   }
 
   public setVolume(vol: number) {
@@ -106,7 +131,7 @@ export class VoiceSpeechEngine {
 
   public async setLanguage(lang: LanguageCode) {
     this.currentLanguage = lang;
-    if (this.ttsReady) {
+    if (this.ttsReady && !hasWebSpeech()) {
       try {
         await Tts.setDefaultLanguage(LANG_MAP[lang]);
       } catch {
@@ -134,25 +159,28 @@ export class VoiceSpeechEngine {
   }
 
   private speakNow(message: string) {
-    if (Platform.OS === 'web') {
-      const webWindow = globalThis as typeof globalThis & {
-        speechSynthesis?: { speak: (u: unknown) => void; cancel: () => void };
-        SpeechSynthesisUtterance?: new (text: string) => { volume: number; lang: string };
-      };
-      if (webWindow.speechSynthesis && webWindow.SpeechSynthesisUtterance) {
-        webWindow.speechSynthesis.cancel();
-        const utterance = new webWindow.SpeechSynthesisUtterance(message);
+    if (hasWebSpeech()) {
+      try {
+        const webWindow = globalThis as WebSpeechWindow;
+        webWindow.speechSynthesis!.cancel();
+        const utterance = new webWindow.SpeechSynthesisUtterance!(message);
         utterance.volume = this.volume;
         utterance.lang = LANG_MAP[this.currentLanguage];
-        webWindow.speechSynthesis.speak(utterance);
+        webWindow.speechSynthesis!.speak(utterance);
+      } catch {
+        // Web Speech API unavailable at runtime
       }
       return;
     }
 
     if (!this.ttsReady) return;
     this.isSpeaking = true;
-    Tts.stop();
-    Tts.speak(message);
+    try {
+      Tts.stop();
+      Tts.speak(message);
+    } catch {
+      this.isSpeaking = false;
+    }
   }
 
   public speak(key: string) {

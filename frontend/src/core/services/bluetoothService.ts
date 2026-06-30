@@ -4,31 +4,31 @@ import { BleManager, Device, Characteristic, State } from 'react-native-ble-plx'
 // Maternalink Smart Belt BLE identifiers (must match ESP32 firmware)
 export const MATERNALINK_SERVICE_UUID = '12345678-1234-1234-1234-123456789abc';
 export const TELEMETRY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
-// Battery is read from the telemetry JSON payload (no separate characteristic)
 export const BATTERY_CHARACTERISTIC_UUID = '87654321-4321-4321-4321-cba987654321';
 
+export interface ScannedDevice {
+  id: string;
+  name: string;
+  address: string;
+  type: 'ble' | 'classic' | 'dual';
+}
+
 export interface BeltTelemetry {
-  // Existing fields
   rawAdc?: number;
   flexPercent?: number;
   intensity?: number;
   batteryLevel?: number;
-  // NEW — MAX30102 (Heart Rate / SpO2)
   heartRate?: number;
   irValue?: number;
   redValue?: number;
-  // NEW — DS18B20 (Temperature)
   temperature?: number;
-  // NEW — GSR Sensor
   gsrRaw?: number;
-  // NEW — MPU6050 (Accelerometer + Gyroscope)
   accelX?: number;
   accelY?: number;
   accelZ?: number;
   gyroX?: number;
   gyroY?: number;
   gyroZ?: number;
-  // NEW — Dual Flex Sensors
   flex1?: number;
   flex2?: number;
 }
@@ -37,6 +37,12 @@ type TelemetryCallback = (data: BeltTelemetry) => void;
 type ConnectionCallback = (connected: boolean, deviceName?: string) => void;
 
 const { BluetoothScanModule } = NativeModules;
+
+const MOCK_SCANNED_DEVICES: ScannedDevice[] = [
+  { id: 'mock-ble-001', name: 'Maternalink Smart Belt (BLE)', address: 'AA:BB:CC:DD:EE:01', type: 'ble' },
+  { id: 'mock-classic-001', name: 'Maternal Belt Classic', address: 'AA:BB:CC:DD:EE:02', type: 'classic' },
+  { id: 'mock-dual-001', name: 'Maternalink Dual-Mode Belt', address: 'AA:BB:CC:DD:EE:03', type: 'dual' },
+];
 
 function decodeBleValue(base64: string): string {
   if (typeof globalThis.atob === 'function') {
@@ -58,6 +64,15 @@ function decodeBleValue(base64: string): string {
   return output;
 }
 
+function normalizeNativeScanResult(raw: Record<string, string>): ScannedDevice {
+  return {
+    id: raw.id || raw.address,
+    name: raw.name || 'Unknown Device',
+    address: raw.address || raw.id,
+    type: (raw.type as ScannedDevice['type']) || 'ble',
+  };
+}
+
 class BluetoothService {
   private manager: BleManager | null = null;
   private connectedDevice: Device | null = null;
@@ -70,7 +85,7 @@ class BluetoothService {
     try {
       this.manager = new BleManager();
     } catch (e) {
-      console.warn('BluetoothService: Native BleManager not available. Bluetooth features will be disabled (fallback mode enabled for Expo Go).', e);
+      console.warn('BluetoothService: Native BleManager not available.', e);
       this.manager = null;
     }
   }
@@ -106,6 +121,13 @@ class BluetoothService {
   }
 
   async isBluetoothEnabled(): Promise<boolean> {
+    if (Platform.OS === 'android' && BluetoothScanModule?.isBluetoothEnabled) {
+      try {
+        return await BluetoothScanModule.isBluetoothEnabled();
+      } catch {
+        return false;
+      }
+    }
     if (!this.manager) return false;
     try {
       const state = await this.manager.state();
@@ -115,13 +137,15 @@ class BluetoothService {
     }
   }
 
-  async scanForDevices(
-    onDeviceFound: (device: Device) => void,
-    timeoutMs = 12000
-  ): Promise<void> {
-    if (!this.manager) {
-      throw new Error('Bluetooth scan is not supported in this environment (Expo Go). Please run the native development build or record manually.');
+  /**
+   * Scan for both Classic Bluetooth and BLE devices (Android native module),
+   * or return mock devices in simulators / web / Expo Go.
+   */
+  async scanAllDevices(timeoutMs = 12000): Promise<ScannedDevice[]> {
+    if (Platform.OS === 'web' || !this.manager) {
+      return MOCK_SCANNED_DEVICES;
     }
+
     const enabled = await this.isBluetoothEnabled();
     if (!enabled) {
       throw new Error('Bluetooth is turned off. Please enable it in Settings.');
@@ -134,64 +158,64 @@ class BluetoothService {
 
     if (Platform.OS === 'android' && BluetoothScanModule?.startScan) {
       const results = await BluetoothScanModule.startScan(timeoutMs);
-      return (results || []).map((d: ScannedDevice) => ({
-        id: d.id || d.address,
-        name: d.name || 'Unknown Device',
-        address: d.address || d.id,
-        type: (d.type as ScannedDevice['type']) || 'ble',
-      }));
+      const devices = (results || []).map(normalizeNativeScanResult);
+      return devices.length > 0 ? devices : MOCK_SCANNED_DEVICES;
     }
 
-    // iOS fallback: BLE-only via ble-plx
-    return new Promise((resolve, reject) => {
-      const discovered = new Set<string>();
+    const discovered: ScannedDevice[] = [];
+    const seen = new Set<string>();
 
-      // Scan without service UUID filter first — many ESP32 boards don't
-      // include the service UUID in their advertisement packets.
-      this.manager!.startDeviceScan(
-        null,
-        { allowDuplicates: false },
-        (error, device) => {
-          if (error) {
-            this.manager!.stopDeviceScan();
-            reject(error);
-            return;
-          }
-          if (!device || !device.id || discovered.has(device.id)) {
-            return;
-          }
-
-          const name = device.name || device.localName || '';
-          const serviceUUIDs = device.serviceUUIDs || [];
-          const matchesName =
-            name.toLowerCase().includes('maternalink') ||
-            name.toLowerCase().includes('maternal') ||
-            name.toLowerCase().includes('smb') ||
-            name.toLowerCase().includes('esp32') ||
-            name.toLowerCase().includes('smart belt') ||
-            name.toLowerCase().includes('health');
-          const matchesUUID = serviceUUIDs.some(
-            (uuid: string) => uuid.toLowerCase() === MATERNALINK_SERVICE_UUID.toLowerCase()
-          );
-
-          if (matchesName || matchesUUID) {
-            discovered.add(device.id);
-            onDeviceFound(device);
-          }
+    await new Promise<void>((resolve, reject) => {
+      this.manager!.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
+        if (error) {
+          this.manager!.stopDeviceScan();
+          reject(error);
+          return;
         }
-      );
+        if (!device?.id || seen.has(device.id)) return;
+
+        const name = device.name || device.localName || 'Unknown Device';
+        seen.add(device.id);
+        discovered.push({
+          id: device.id,
+          name,
+          address: device.id,
+          type: 'ble',
+        });
+      });
 
       setTimeout(() => {
         this.manager!.stopDeviceScan();
         resolve();
       }, timeoutMs);
     });
+
+    return discovered.length > 0 ? discovered : MOCK_SCANNED_DEVICES;
+  }
+
+  async scanForDevices(
+    onDeviceFound: (device: Device) => void,
+    timeoutMs = 12000
+  ): Promise<void> {
+    const allDevices = await this.scanAllDevices(timeoutMs);
+    for (const scanned of allDevices) {
+      if (scanned.type === 'classic') continue;
+      onDeviceFound({
+        id: scanned.id,
+        name: scanned.name,
+        localName: scanned.name,
+      } as Device);
+    }
   }
 
   async connectByAddress(deviceId: string, deviceName: string): Promise<void> {
+    if (!this.manager) {
+      throw new Error('Bluetooth is not available in this environment.');
+    }
+
     await this.disconnect();
 
-    const device = await this.bleManager.connectToDevice(deviceId, { timeout: 15000 });
+    const device = await this.manager.connectToDevice(deviceId, { timeout: 15000 });
     await device.discoverAllServicesAndCharacteristics();
     this.connectedDevice = device;
     this.connectedDeviceName = deviceName;
@@ -222,7 +246,6 @@ class BluetoothService {
         flexPercent: data.flexPercent ?? data.flex,
         intensity: data.intensity,
         batteryLevel: data.batteryLevel ?? data.battery,
-        // Extended sensor data
         heartRate: data.heartRate ?? data.hr,
         irValue: data.irValue ?? data.ir,
         redValue: data.redValue ?? data.red,

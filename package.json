@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "twilio": "^6.0.2",
     "mongodb": "^6.21.0"
   }
 }

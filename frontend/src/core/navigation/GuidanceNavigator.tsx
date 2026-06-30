@@ -16,7 +16,6 @@ export const GuidanceNavigator: React.FC = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="GuidanceHome" component={GuidanceScreen} />
-      <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="Exercises" component={ExerciseListScreen} />
     </Stack.Navigator>
   );

@@ -41,20 +41,47 @@ interface GuidanceCardProps {
   icon: string;
   items: string[];
   status: 'healthy' | 'attention' | 'warning' | 'emergency' | 'info';
+  tag?: string;
+  clickable?: boolean;
+  onPress?: () => void;
 }
 
-const GuidanceCard: React.FC<GuidanceCardProps> = ({ title, icon, items, status }) => {
+const GuidanceCard: React.FC<GuidanceCardProps> = ({
+  title,
+  icon,
+  items,
+  status,
+  tag,
+  clickable,
+  onPress,
+}) => {
   const colors = SEMANTIC_COLORS[status];
 
   return (
-    <Card style={[styles.guidanceCard, { borderLeftColor: colors.primary }]}>
+    <Card
+      style={[styles.guidanceCard, { borderLeftColor: colors.primary }]}
+      onPress={clickable ? onPress : undefined}
+    >
       <View style={[styles.cardHeader, { backgroundColor: colors.background }]}>
         <Text style={styles.cardIcon}>{icon}</Text>
         <Subheading style={[styles.cardTitle, { color: Theme.colors.text }]}>
           {title}
         </Subheading>
-        <View style={[styles.statusTag, { backgroundColor: colors.primary }]}>
-          <Text style={styles.statusText}>{status.toUpperCase()}</Text>
+        <View style={styles.rightSection}>
+          <View
+            style={[
+              styles.statusTag,
+              { backgroundColor: colors.primary },
+            ]}
+          >
+            <Text style={styles.statusText}>
+              {tag || status.toUpperCase()}
+            </Text>
+          </View>
+
+          {clickable && (
+            <Text style={styles.chevron}>›</Text>
+          )}
         </View>
       </View>
       
@@ -110,12 +137,7 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
               Week {profile.pregnancyWeek || 0} · {trimesterSuffix(profile.trimester || 1)} Trimester
             </BodyText>
           </View>
-          <View style={styles.headerRight}>
-            <SosButton />
-            <View style={styles.weekBadge}>
-              <Text style={styles.weekBadgeText}>W{profile.pregnancyWeek}</Text>
-            </View>
-          </View>
+          
         </View>
       </View>
 
@@ -153,14 +175,6 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             status="info"
           />
 
-          {/* Exercise Tips - Green (Healthy) */}
-          <GuidanceCard
-            title="Exercise Recommendations"
-            icon="🏃‍♀️"
-            items={data.exerciseTips}
-            status="healthy"
-          />
-
           {/* Medical Tests - Yellow (Attention) */}
           <GuidanceCard
             title="Medical Tests"
@@ -185,26 +199,23 @@ export const GuidanceScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
             status="emergency"
           />
 
+          
+          <GuidanceCard
+            title="Exercise"
+            icon="🏃‍♀️"
+            items={data.exerciseTips}
+            status="healthy"
+            tag="RECOMMENDED"
+            clickable
+            onPress={() => navigation.navigate('Exercises')}
+          />
+
           <Caption style={styles.disclaimer}>
             Medical advice based on standard pregnancy profiles. Consult your primary obstetrician for specific health symptoms.
           </Caption>
         </ScrollView>
       ) : null}
 
-      <FAB
-        icon="chat-processing"
-        label="AI Chat"
-        style={styles.chatFab}
-        onPress={() => navigation.navigate('Chatbot')}
-        color="#FFF"
-      />
-      <FAB
-        icon="yoga"
-        label="Exercises"
-        style={styles.exerciseFab}
-        onPress={() => navigation.navigate('Exercises')}
-        color="#FFF"
-      />
     </View>
   );
 };
@@ -349,6 +360,17 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 60,
     backgroundColor: '#378ADD',
+  },
+  rightSection: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+  chevron: {
+    marginLeft: 4,
+    fontSize: 20,
+    color: Theme.colors.textSecondary,
+    fontWeight: '600',
   },
 });
 

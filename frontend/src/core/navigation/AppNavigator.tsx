@@ -1,18 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { DeviceEventEmitter, Alert } from 'react-native';
 import Theme from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { bluetoothService } from '../services/bluetoothService';
-
+import emergencyService from '../../features/emergency/services/emergencyService';
+import ChatbotScreen from '../../features/guidance/screens/ChatbotScreen';
 import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import RegisterScreen from '../../features/auth/screens/RegisterScreen';
 import PregnancyProfileScreen from '../../features/profile/screens/PregnancyProfileScreen';
 import SplashScreen from '../../features/auth/screens/SplashScreen';
+import EmergencyContactsScreen from '../../features/emergency/screens/EmergencyContactsScreen';
+import EmergencySettingsScreen from '../../features/emergency/screens/EmergencySettingsScreen';
+import EmergencyAlertHistoryScreen from '../../features/emergency/screens/EmergencyAlertHistoryScreen';
+import HealthScreen from '../../features/health/screens/HealthScreen';
 
 export type AppStackParamList = {
   Main: undefined;
   PregnancyProfile: { isEdit: boolean } | undefined;
+  EmergencyContacts: undefined;
+  EmergencySettings: undefined;
+  EmergencyAlertHistory: undefined;
+  Health: undefined;
+  Chatbot: undefined;
 };
 
 const Stack = createStackNavigator<AppStackParamList>();
@@ -25,15 +36,38 @@ export type AuthStackParamList = {
 const AuthStack = createStackNavigator<AuthStackParamList>();
 
 export const AppNavigator: React.FC = () => {
-  const { isAuthenticated, isLoading, profile } = useAuth();
+  const { isAuthenticated, isLoading, profile, user } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (!showSplash) {
-      // Request all permissions right when the app opens
-      bluetoothService.requestPermissions().catch(console.warn);
-    }
-  }, [showSplash]);
+  if (!showSplash) {
+    bluetoothService.requestPermissions().catch(console.warn);
+  }
+}, [showSplash]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    const subscription = DeviceEventEmitter.addListener('HardwareSOSTriggered', async () => {
+      try {
+        await emergencyService.triggerManualSos({
+          userId: user.id,
+          deviceId: bluetoothService.getConnectedDeviceId() || 'hardware-sos',
+          latitude: 0,
+          longitude: 0,
+        });
+        Alert.alert(
+          'Emergency SOS Activated',
+          'A distress alert has been sent to your emergency contacts.'
+        );
+      } catch (err) {
+        console.error('Hardware SOS trigger failed:', err);
+        Alert.alert('SOS Failed', 'Unable to send the emergency alert. Please try again.');
+      }
+    });
+
+    return () => subscription.remove();
+  }, [isAuthenticated, user?.id]);
 
   if (isLoading || showSplash) {
     return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;
@@ -63,11 +97,35 @@ export const AppNavigator: React.FC = () => {
     );
   }
 
-  // Show primary tab navigators and register the Profile screen on stack to navigate to
+  // Show primary tab navigators and register emergency/health stack screens
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Main" component={MainTabNavigator} />
-      <Stack.Screen name="PregnancyProfile" component={PregnancyProfileScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: Theme.colors.cardBackground,
+          elevation: 2,
+          shadowColor: '#1A0C22',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 5,
+        },
+        headerTintColor: Theme.colors.primaryDark,
+        headerTitleStyle: {
+          fontWeight: Theme.typography.weights.semibold,
+          fontSize: Theme.typography.sizes.md,
+          fontFamily: Theme.typography.fontFamily,
+        },
+        cardStyle: { backgroundColor: Theme.colors.background },
+      }}
+    >
+      <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ presentation: 'modal', title: 'AI Assistant',}}
+  />
+      <Stack.Screen name="PregnancyProfile" component={PregnancyProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />
+      <Stack.Screen name="EmergencySettings" component={EmergencySettingsScreen} options={{ title: 'Alert Settings' }} />
+      <Stack.Screen name="EmergencyAlertHistory" component={EmergencyAlertHistoryScreen} options={{ title: 'Incident logs' }} />
+      <Stack.Screen name="Health" component={HealthScreen} options={{ title: 'Health Hub' }} />
     </Stack.Navigator>
   );
 };

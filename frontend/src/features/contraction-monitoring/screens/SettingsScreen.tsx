@@ -16,9 +16,6 @@ export const SettingsScreen: React.FC = () => {
   const [isVoiceMuted, setIsVoiceMuted] = useState(voiceSpeechEngine.getMutedState());
   const [currentLang, setCurrentLang] = useState<LanguageCode>(voiceSpeechEngine.getLanguageState());
 
-  const [doctorName, setDoctorName] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-
   const [bleConnected, setBleConnected] = useState(bluetoothService.isConnected());
   const [bleDeviceName, setBleDeviceName] = useState<string | null>(null);
 
@@ -192,28 +189,6 @@ export const SettingsScreen: React.FC = () => {
             onPress={handleTestSpeech}
             style={styles.testBtn}
           />
-        </Card>
-
-        {/* Emergencies configuration */}
-        <Card style={styles.sectionCard}>
-          <Subheading style={styles.sectionTitle}>Care Provider Profile</Subheading>
-          <View style={styles.fieldCol}>
-            <Caption>Attending Obstetrician Name</Caption>
-            <TextInput
-              value={doctorName}
-              onChangeText={setDoctorName}
-              style={styles.fullWidthInput}
-            />
-          </View>
-          <View style={styles.fieldCol}>
-            <Caption>Emergency Contact Phone</Caption>
-            <TextInput
-              value={emergencyPhone}
-              onChangeText={setEmergencyPhone}
-              keyboardType="phone-pad"
-              style={styles.fullWidthInput}
-            />
-          </View>
         </Card>
 
         <Button

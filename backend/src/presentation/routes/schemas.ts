@@ -102,46 +102,72 @@ export const postReadingSchema = z.object({
   }),
 });
 
-export const healthSyncSchema = z.object({
+// --- Emergency System Zod Schemas ---
+
+export const sosAlertSchema = z.object({
   body: z.object({
-    deviceId: z.string().min(1),
-    sessionStart: z.string().or(z.number()),
-    sessionEnd: z.string().or(z.number()),
-    readings: z.array(z.object({
-      timestamp: z.string().or(z.number()),
-      heartRate: z.number().optional(),
-      spO2: z.number().optional(),
-      temperature: z.number().optional(),
-      stressScore: z.number().optional(),
-      activity: z.enum(['lying', 'sitting', 'standing', 'walking', 'unknown']).optional(),
-      contractionActive: z.boolean().optional(),
-      contractionIntensity: z.number().optional(),
-      contractionDuration: z.number().optional(),
-      contractionInterval: z.number().optional(),
-      contractionFrequency: z.number().optional(),
-      flex1Raw: z.number().optional(),
-      flex2Raw: z.number().optional(),
-      accelMagnitude: z.number().optional(),
-      gsrRaw: z.number().optional(),
-      batteryLevel: z.number().optional(),
-    })).min(1),
-    alerts: z.array(z.object({
-      timestamp: z.string().or(z.number()),
-      type: z.string(),
-      value: z.number(),
-      message: z.string(),
-    })).optional().default([]),
-    summary: z.object({
-      avgHeartRate: z.number().optional(),
-      avgSpO2: z.number().optional(),
-      avgTemperature: z.number().optional(),
-      avgStressScore: z.number().optional(),
-      totalContractions: z.number().optional(),
-      avgContractionDuration: z.number().optional(),
-      avgContractionInterval: z.number().optional(),
-      dominantActivity: z.string().optional(),
-      fallsDetected: z.number().optional(),
-      sleepMinutes: z.number().optional(),
-    }).optional().default({}),
+    userId: z.string().length(24, 'Invalid User ID format.'),
+    deviceId: z.string().min(1, 'Device identifier is required.'),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Timestamp must be a valid date string.',
+    }).optional(),
   }),
 });
+
+export const autoAlertSchema = z.object({
+  body: z.object({
+    userId: z.string().length(24, 'Invalid User ID format.'),
+    triggerType: z.enum([
+      'SOS_BUTTON',
+      'HIGH_STRESS',
+      'HIGH_HEART_RATE',
+      'STRONG_CONTRACTIONS',
+      'ABNORMAL_FETAL_HEARTBEAT',
+      'FALL_DETECTED',
+      'MULTIPLE_RISK_FACTORS',
+    ]).optional(),
+    sensorData: z.object({
+      maternalHeartRate: z.number().optional(),
+      fetalHeartRate: z.number().optional(),
+      stressLevel: z.number().optional(),
+      contractionIntensity: z.number().optional(),
+      contractionFrequency: z.number().optional(),
+      fallDetected: z.boolean().optional(),
+    }).optional(),
+  }),
+});
+
+export const saveContactSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters.'),
+    relation: z.string().min(2, 'Relation must be at least 2 characters.'),
+    phone: z.string().min(8, 'Phone number must be at least 8 digits.').regex(/^\+?[0-9]{8,15}$/, 'Invalid phone number format.'),
+    whatsapp: z.string().min(8, 'WhatsApp number must be at least 8 digits.').regex(/^\+?[0-9]{8,15}$/, 'Invalid WhatsApp number format.'),
+    priority: z.number().min(1, 'Priority must be at least 1.'),
+  }),
+});
+
+export const updateContactSchema = z.object({
+  params: z.object({
+    contactId: z.string().length(24, 'Invalid Contact ID format.'),
+  }),
+  body: z.object({
+    name: z.string().min(2).optional(),
+    relation: z.string().min(2).optional(),
+    phone: z.string().min(8).regex(/^\+?[0-9]{8,15}$/).optional(),
+    whatsapp: z.string().min(8).regex(/^\+?[0-9]{8,15}$/).optional(),
+    priority: z.number().min(1).optional(),
+  }),
+});
+
+export const updateSettingsSchema = z.object({
+  body: z.object({
+    whatsappAlertsEnabled: z.boolean().optional(),
+    pushNotificationsEnabled: z.boolean().optional(),
+    autoAlertsEnabled: z.boolean().optional(),
+    sosButtonEnabled: z.boolean().optional(),
+  }),
+});
+

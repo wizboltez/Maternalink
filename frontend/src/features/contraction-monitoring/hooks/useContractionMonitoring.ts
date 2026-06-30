@@ -5,6 +5,7 @@ import contractionApi from '../api/contractionApi';
 import bluetoothService from '../../../core/services/bluetoothService';
 import { SOCKET_URL } from '../../../core/config/api';
 import { ContractionAnalyzer } from '../../maternal-health/services/sensorProcessors';
+import { formatClockTime } from '../../../core/utils/timeFormat';
 
 export interface ContractionEvent {
   timestamp: string;
@@ -54,7 +55,7 @@ export const useContractionMonitoring = (
 
   useEffect(() => {
     bluetoothService.setConnectionCallback((connected) => {
-      setIsBeltConnected(connected);
+      setIsBleConnected(connected);
     });
     return () => bluetoothService.setConnectionCallback(null);
   }, []);
@@ -66,14 +67,14 @@ export const useContractionMonitoring = (
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      setIsSocketConnected(true);
+      setIsConnected(true);
       setSessionStartedAt(new Date());
       socket.emit('join_session', sessionId);
       voiceSpeechEngine.speak('monitoring_started');
     });
 
     socket.on('disconnect', () => {
-      setIsSocketConnected(false);
+      setIsConnected(false);
     });
 
     // Ingest live reading update from socket (Online Mode)
@@ -273,6 +274,7 @@ export const useContractionMonitoring = (
 
   return {
     isConnected: isConnected || isBleConnected,
+    isBleConnected,
     batteryLevel,
     sessionStartedAt,
     currentReading,
