@@ -1,7 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import GuidanceScreen from '../../features/guidance/screens/GuidanceScreen';
-import ChatbotScreen from '../../features/guidance/screens/ChatbotScreen';
 import ExerciseListScreen from '../../features/guidance/screens/ExerciseListScreen';
 
 export type GuidanceStackParamList = {

@@ -52,6 +52,7 @@ frontend/ios/build/
 frontend/ios/Pods/
 frontend/ios/DerivedData/
 frontend/.metro-health-check*
+frontend/android/app/debug.keystore
 
 # --- Testing ---
 coverage/

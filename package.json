@@ -1,6 +1,21 @@
 {
+  "name": "maternalink",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Maternalink monorepo — exercise/chat API and shared tooling",
+  "main": "app.js",
+  "scripts": {
+    "chatbot:start": "node app.js",
+    "chatbot:dev": "nodemon app.js"
+  },
   "dependencies": {
-    "twilio": "^6.0.2",
-    "mongodb": "^6.21.0"
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "mongodb": "^6.21.0",
+    "twilio": "^6.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

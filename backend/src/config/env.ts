@@ -18,6 +18,8 @@ const envSchema = z.object({
   TWILIO_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_WHATSAPP_NUMBER: z.string().optional(),
+  // AI Chat (Groq)
+  GROQ_API_KEY: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
