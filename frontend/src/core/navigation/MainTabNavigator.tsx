@@ -43,7 +43,7 @@ const FloatingChatButton: React.FC = () => {
     <TouchableOpacity
       style={styles.fab}
       activeOpacity={0.85}
-      onPress={() => navigation.getParent()?.navigate('Chatbot')}
+      onPress={() => navigation.navigate('Chatbot')}
       accessibilityLabel="Open AI Chat"
     >
       <Text style={styles.fabIcon}>💬</Text>

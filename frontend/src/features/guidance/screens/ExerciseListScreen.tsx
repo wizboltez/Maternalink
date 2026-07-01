@@ -11,9 +11,24 @@ import { SosButton } from '../../../core/components/SosButton';
 
 export const ExerciseListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { profile } = useAuth();
-  const { heartRate, spO2, temperature, stressScore, isConnected } = useMaternalHealth();
+  const { heartRate, spO2, temperature, stressScore, activity, fallDetected, isSleeping, contractionActive, contractionIntensity, contractionDuration, contractionFrequency } = useMaternalHealth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExerciseRecommendationResponse | null>(null);
+
+  const mapActivityToIndex = (value: typeof activity): number => {
+    switch (value) {
+      case 'lying':
+        return 0.1;
+      case 'sitting':
+        return 0.3;
+      case 'standing':
+        return 0.5;
+      case 'walking':
+        return 0.8;
+      default:
+        return 0.4;
+    }
+  };
 
   const fetchRecommendations = async () => {
     setLoading(true);
@@ -23,7 +38,15 @@ export const ExerciseListScreen: React.FC<{ navigation: any }> = ({ navigation }
         spo2: spO2,
         temperature,
         stressScore,
-        activityIndex: 0.5, // Mock activity
+        activity,
+        activityIndex: mapActivityToIndex(activity),
+        posture: activity,
+        fallDetected,
+        isSleeping,
+        contractionActive,
+        contractionIntensity,
+        contractionDuration,
+        contractionFrequency,
         pregnancyWeek: profile?.pregnancyWeek,
       };
 

@@ -171,3 +171,18 @@ export const updateSettingsSchema = z.object({
   }),
 });
 
+export const healthSyncSchema = z.object({
+  body: z.object({
+    deviceId: z.string().min(1, 'Device ID is required.'),
+    sessionStart: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Session start must be a valid date string.',
+    }),
+    sessionEnd: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: 'Session end must be a valid date string.',
+    }),
+    readings: z.array(z.any()).min(1, 'At least one reading is required.'),
+    alerts: z.array(z.any()).optional(),
+    summary: z.record(z.any()).optional(),
+  }),
+});
+

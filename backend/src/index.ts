@@ -17,14 +17,6 @@ app.use(express.json());
 // 2. Register REST API Routes
 app.use('/api', router);
 
-// Exercise recommendation & AI chat (merged from Exercise-Chatbot branch)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const exerciseRoutes = require('../../routes/exercise');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const chatbotRoutes = require('../../routes/chatbot');
-app.use('/api/exercise', exerciseRoutes);
-app.use('/api/chat', chatbotRoutes);
-
 // 3. Fallback Health Endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({

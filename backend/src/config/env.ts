@@ -1,9 +1,22 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
 
-// Load environmental configuration
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Load environmental configuration from the backend .env first, then fall back to repo root .env.
+const envCandidates = [
+  path.join(__dirname, '../../.env'),
+  path.join(__dirname, '../../../.env'),
+  path.join(process.cwd(), 'backend', '.env'),
+  path.join(process.cwd(), '.env'),
+];
+
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
 
 const envSchema = z.object({
   PORT: z.string().transform((val) => parseInt(val, 10)).default('5000'),

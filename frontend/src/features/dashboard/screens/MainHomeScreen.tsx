@@ -27,24 +27,27 @@ export const MainHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           </View>
           <SosButton />
         </View>
-        {profile && (
+        {profile?.expectedDeliveryDate && profile?.gestationalAgeWeeks && (
           <Caption style={styles.meta}>
-            Week {profile.gestationalAgeWeeks} · Due {dueDate}
+            Week {profile.gestationalAgeWeeks} • Due {dueDate}
           </Caption>
         )}
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, isTablet && styles.scrollTablet]}>
-        {isProfileIncomplete && (
-          <Card
-            onPress={() => navigation.navigate('Profile')}
-            style={styles.warningCard}
-          >
-            <Subheading style={styles.warningTitle}>Complete Your Profile</Subheading>
-            <BodyText style={styles.warningText}>
-              Please add your expected delivery date and weight in Settings so we can personalise your guidance and monitoring.
-            </BodyText>
-          </Card>
+        {isProfileIncomplete && (  
+        <Card
+          onPress={() => navigation.navigate('Profile')}
+          style={styles.profileCard}
+        >
+          <Subheading style={styles.profileTitle}>
+            Complete Your Profile
+          </Subheading>
+
+          <BodyText style={styles.profileLink}>
+            Complete Profile →
+          </BodyText>
+        </Card>
         )}
 
         <Card style={styles.heroCard}>
@@ -163,6 +166,35 @@ const styles = StyleSheet.create({
   featureTitle: { color: Theme.colors.text, marginBottom: 4 },
   featureDesc: { color: Theme.colors.textSecondary, fontSize: Theme.typography.sizes.sm, lineHeight: 18 },
   featureTag: { marginTop: Theme.spacing.sm, color: Theme.colors.accent },
+    profileCard: {
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
+    backgroundColor: '#F8F3FC',
+    borderWidth: 1,
+    borderColor: '#E8DDF4',
+  },
+
+  profileTitle: {
+    color: Theme.colors.primaryDark,
+    marginBottom: Theme.spacing.xs,
+  },
+
+  profileDescription: {
+    color: Theme.colors.textSecondary,
+    fontSize: Theme.typography.sizes.sm,
+    lineHeight: 20,
+  },
+
+  profileStatus: {
+    color: Theme.colors.textSecondary,
+    marginTop: Theme.spacing.sm,
+  },
+
+  profileLink: {
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.primary,
+    fontWeight: '600',
+  },
 });
 
 export default MainHomeScreen;

@@ -12,7 +12,7 @@ export const SOCKET_URL = API_HOST;
 
 // ────────── Offline / Online Mode Toggle ──────────
 // Persisted to AsyncStorage so the user can switch at runtime.
-// Defaults to OFFLINE for standalone testing without a backend.
+// Defaults to ONLINE so the app uses the backend unless offline mode is explicitly enabled.
 const MODE_KEY = '@maternalink_offline_mode';
 
 let _offlineMode: boolean | null = null;
@@ -21,9 +21,9 @@ export async function getIsOfflineMode(): Promise<boolean> {
   if (_offlineMode !== null) return _offlineMode;
   try {
     const stored = await AsyncStorage.getItem(MODE_KEY);
-    _offlineMode = stored === null ? true : stored === 'true'; // default: offline
+    _offlineMode = stored === null ? false : stored === 'true';
   } catch {
-    _offlineMode = true;
+    _offlineMode = false;
   }
   return _offlineMode;
 }
@@ -34,5 +34,5 @@ export async function setOfflineMode(offline: boolean): Promise<void> {
 }
 
 export function getOfflineModeSync(): boolean {
-  return _offlineMode ?? true; // default offline until async check runs
+  return _offlineMode ?? false;
 }

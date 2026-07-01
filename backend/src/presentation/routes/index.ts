@@ -7,6 +7,8 @@ import { PregnancyProfileController } from '../controllers/PregnancyProfileContr
 import { GuidanceController } from '../controllers/GuidanceController';
 import emergencyRouter from './emergencyRoutes';
 import { HealthSyncController } from '../controllers/HealthSyncController';
+import exerciseRouter from './exerciseRoutes';
+import chatbotRouter from './chatbotRoutes';
 import { authMiddleware, validate } from '../../infrastructure/web/middlewares';
 
 import {
@@ -60,6 +62,10 @@ router.get('/monitoring/export/pdf-all', authMiddleware as any, MonitoringContro
 
 // --- Emergency System Routes ---
 router.use('/emergency', emergencyRouter);
+
+// --- Exercise & Chatbot Routes ---
+router.use('/exercise', exerciseRouter);
+router.use('/chat', chatbotRouter);
 
 // --- Health Sync Routes ---
 router.post('/health/sync', authMiddleware as any, validate(healthSyncSchema), HealthSyncController.syncBatch);

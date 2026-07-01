@@ -15,8 +15,22 @@ interface ChatMessage {
 }
 
 export const ChatbotScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, profile } = useAuth();
-  const { heartRate, spO2, temperature, stressScore } = useMaternalHealth();
+  const { profile } = useAuth();
+  const {
+    heartRate,
+    spO2,
+    temperature,
+    stressScore,
+    activity,
+    fallDetected,
+    isSleeping,
+    contractionActive,
+    contractionPhase,
+    contractionIntensity,
+    contractionDuration,
+    contractionInterval,
+    contractionFrequency,
+  } = useMaternalHealth();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init',
@@ -28,6 +42,21 @@ export const ChatbotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const mapActivityToIndex = (value: typeof activity): number => {
+    switch (value) {
+      case 'lying':
+        return 0.1;
+      case 'sitting':
+        return 0.3;
+      case 'standing':
+        return 0.5;
+      case 'walking':
+        return 0.8;
+      default:
+        return 0.4;
+    }
+  };
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -51,6 +80,17 @@ export const ChatbotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         temperature,
         stressScore,
         pregnancyWeek: profile?.pregnancyWeek,
+        activity,
+        activityIndex: mapActivityToIndex(activity),
+        posture: activity,
+        fallDetected,
+        isSleeping,
+        contractionActive,
+        contractionPhase,
+        contractionIntensity,
+        contractionDuration,
+        contractionInterval,
+        contractionFrequency,
       };
 
       const response = await guidanceApi.sendMessage({
