@@ -1,151 +1,225 @@
-# Maternalink - Complete Handover Guide
+# Exercise Recommendation & AI Chat Module
 
-Welcome to the Maternalink project! This document serves as the complete technical handover guide, detailing the folder structure, setup instructions, feature logic, API integrations, and database schemas.
+**Stack:** Node.js + Express (backend) · React Native (frontend)
 
-## 📁 Folder Structure
+---
 
-The project is structured as a Monorepo containing a React Native mobile application and a Node.js/Express backend.
+## Folder structure
 
 ```
-Maternalink/
-├── frontend/                # React Native (Expo bare workflow) Mobile App
-│   ├── android/             # Native Android project files
-│   ├── ios/                 # Native iOS project files
-│   ├── src/
-│   │   ├── core/            # Core configuration (api config, theme, navigation)
-│   │   ├── features/        # Feature-based module architecture
-│   │   │   ├── auth/        # Login/Registration screens
-│   │   │   ├── contraction-monitoring/ # BLE connection & Contraction Tracking
-│   │   │   ├── dashboard/   # Main app dashboard
-│   │   │   ├── guidance/    # AI Chatbot & Exercise Guidance
-│   │   │   ├── health/      # General health utilities
-│   │   │   ├── maternal-health/ # Vitals monitoring (SpO2, HR, Temp)
-│   │   │   └── profile/     # User profile and settings (Offline Toggle)
-│   │   └── App.tsx          # Application entry point
-│   ├── package.json         # Frontend dependencies
-│   └── tsconfig.json        # TypeScript configuration
-│
-└── backend/                 # Node.js + Express Backend Server
-    ├── src/
-    │   ├── application/     # Services and business logic
-    │   ├── domain/          # Database Models (Mongoose)
-    │   ├── presentation/    # Controllers (e.g., SosController)
-    │   └── server.ts        # Express server entry point
-    ├── .env                 # Environment variables (API keys, DB URIs)
-    └── package.json         # Backend dependencies
+── Backend (push to your branch root) ──────────────────
+exercise-api/
+├── app.js                          ← Express server entry point
+├── package.json
+├── .env.example                    ← copy to .env and add API key
+├── routes/
+│   ├── exercise.js                 ← exercise endpoints
+│   └── chatbot.js                  ← chat endpoint
+├── controllers/
+│   ├── exerciseController.js       ← decision logic
+│   └── chatbotController.js        ← AI context injection
+└── data/
+    └── exercises.js                ← all video data
+
+── React Native (copy into your RN project) ────────────
+src/
+├── services/
+│   └── exerciseService.js          ← all API calls
+└── screens/
+    ├── ExerciseScreen.jsx          ← exercise recommendation UI
+    └── ChatScreen.jsx              ← AI chat UI
 ```
 
-## ⚙️ Setup Instructions
+---
 
-### 1. Backend Setup (Node.js)
-1. Navigate to the backend folder: `cd backend`
-2. Install dependencies: `npm install`
-3. Create a `.env` file (copy from `.env.example`) and configure your API keys (see below).
-4. Run the development server: `npm run dev`
-*(The backend will start on `http://localhost:5000`)*
+## Backend setup
 
-### 2. Frontend Setup (React Native)
-1. Navigate to the frontend folder: `cd frontend`
-2. Install dependencies: `npm install`
-3. Connect the frontend to your backend:
-   - Open `frontend/src/core/config/api.ts`
-   - Change `API_HOST` to your backend's IP address (e.g., `http://10.0.2.2:5000` for Android Emulator, or your computer's LAN IP if testing on a physical device).
-4. **Run the App:**
-   - For development: `npm run start` (or `expo start`)
-   - To build a standalone APK: `cd android && ./gradlew assembleRelease`
+```bash
+cd exercise-api
+npm install
 
-## 🔑 API Key Setup (`backend/.env`)
+# Create .env file from template
+cp .env.example .env
+# Edit .env and add your GROQ_API_KEY (get a key from https://console.groq.com)
 
-The backend centralizes all sensitive API keys. **Never put these in the frontend code!**
-
-```env
-# Server Configuration
-PORT=5000
-NODE_ENV=development
-
-# MongoDB Database (Use a local URI or MongoDB Atlas cloud URI)
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/maternalink
-
-# JWT Secret (Used to sign user login tokens)
-JWT_SECRET=your_super_secret_jwt_string
-
-# Twilio (For Emergency SOS SMS Feature)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_FROM_NUMBER=+1234567890
-EMERGENCY_CONTACT_NUMBER=+0987654321
+npm run dev      # development — auto-reloads on save
+npm start        # production
 ```
 
-## 🧠 Feature Logic
+Server starts at: `http://localhost:3000`
 
-### 1. Bluetooth Low Energy (BLE) Integration
-- **Location:** `frontend/src/features/contraction-monitoring/services/bluetoothService.ts`
-- **Logic:** The app scans for the ESP32 hardware using a specific `SERVICE_UUID` (`12345678-1234-1234-1234-123456789abc`) and `CHARACTERISTIC_UUID`. Once connected, it streams raw JSON data bytes, decodes them using `TextDecoder`, and passes them to the vital sign processors.
+---
 
-### 2. Vitals Aggregation (100-Second Mean)
-- **Location:** `frontend/src/features/maternal-health/hooks/useMaternalHealth.ts`
-- **Logic:** To prevent wildly fluctuating UI updates, vital signs (Heart Rate, SpO2, Temperature) are aggregated into a 100-second window array. The UI displays the *calculated mean* of these arrays. The data refreshes visibly every 2 minutes for stability.
+## API endpoints
 
-### 3. Emergency SOS
-- **Location:** `frontend/src/core/components/SosButton.tsx` & `backend/src/presentation/controllers/SosController.ts`
-- **Logic:** A global red SOS button is injected into the navigation header of all screens. When pressed, it sends an HTTP POST request to the backend. The backend uses the Twilio SDK to send an SMS to the registered emergency contact.
+### POST /api/exercise/recommend
+Receive exercise recommendations based on processed sensor data.
 
-### 4. Offline / Demo Mode
-- **Location:** `frontend/src/core/config/api.ts`
-- **Logic:** Users can toggle "Offline Demo Mode" in their Profile Settings. When enabled, all HTTP requests to the backend (Auth, Sync, Chatbot) are intercepted and returning mock data instantly, allowing the app to function without internet.
-
-## 🤖 AI Guidance Chatbot
-
-- **Location:** `frontend/src/features/guidance/screens/ChatbotScreen.tsx`
-- **API File:** `frontend/src/features/guidance/api/guidanceApi.ts`
-- **How it Works:** The Chatbot is a specialized AI assistant that acts as a virtual maternal health guide. 
-- **Sensor Context:** Whenever the user sends a message to the Chatbot, the app silently attaches their *current live vital signs* (Heart rate, SpO2, Stress Score, Pregnancy Week). This allows the backend AI to provide hyper-personalized responses (e.g., "I notice your stress score is slightly high right now, take a deep breath...").
-- **Backend Implementation:** The actual LLM (e.g., OpenAI/Gemini integration) should be implemented on the backend (`/api/chat/message`). If running in offline mode, the frontend intercepts the request and provides simulated placeholder responses.
-
-## 🗄️ Database Schema
-
-The backend uses MongoDB (via Mongoose) to store persistent data.
-
-### 1. User Model
-```typescript
+**Request body** (all values from your friend's hardware branch):
+```json
 {
-  _id: ObjectId,
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: true },
-  role: { type: String, enum: ['mother', 'doctor', 'admin'] },
-  createdAt: Date
+  "heartRate": 82,
+  "restingHR": 72,
+  "spo2": 98,
+  "hrv": 42,
+  "temperature": 36.7,
+  "gsrConductance": 6.8,
+  "stressScore": 65,
+  "activityIndex": 0.08,
+  "sleepScore": 84,
+  "posture": "Standing",
+  "fallDetected": false,
+  "bellyExpansion": 8.2,
+  "mws": 87,
+  "pregnancyWeek": 24,
+  "minutesSitting": 35
 }
 ```
 
-### 2. Profile Model
-```typescript
+**Response:**
+```json
 {
-  _id: ObjectId,
-  userId: { type: ObjectId, ref: 'User' },
-  name: String,
-  pregnancyWeek: Number,
-  expectedDeliveryDate: Date,
-  bloodGroup: String,
-  weight: Number,
-  emergencyContactName: String,
-  emergencyContactPhone: String
+  "success": true,
+  "emergency": false,
+  "sensorSummary": { ... },
+  "reasons": ["Stress score is 65/100 — high. Breathing recommended."],
+  "recommendations": [
+    {
+      "category": "stress_relief",
+      "label": "Stress Relief",
+      "icon": "🧘",
+      "videos": [ { "id": "sr1", "title": "...", "url": "...", "duration": "5-10 min" } ]
+    }
+  ],
+  "totalCategories": 2,
+  "totalVideos": 5
 }
 ```
 
-### 3. Telemetry Session Model
-```typescript
+### GET /api/exercise/all
+Returns every category and all videos. Use for the Browse screen.
+
+### GET /api/exercise/health
+Returns `{ success: true }`. Use to ping the server.
+
+### POST /api/chat/message
+Send a user message with sensor context, get a personalised AI reply.
+
+**Request body:**
+```json
 {
-  _id: ObjectId,
-  userId: { type: ObjectId, ref: 'User' },
-  startTime: Date,
-  endTime: Date,
-  aggregatedData: {
-    meanHeartRate: Number,
-    meanSpO2: Number,
-    meanTemperature: Number,
-    meanStressScore: Number,
-    contractionCount: Number
-  }
+  "message": "Am I doing okay right now?",
+  "sensorData": { ... same object as above ... }
 }
 ```
-*(Note: High-frequency raw sensor data is processed on the phone to save bandwidth; only the aggregated 100-second means and significant events like contractions are synced to the cloud).*
+
+**Response:**
+```json
+{
+  "success": true,
+  "reply": "Your heart rate is 82 bpm and MWS is 87/100 — you are doing well today! Your stress score of 65 is a bit high though. Try the box breathing exercise for 5 minutes.",
+  "sensorContext": { "heartRate": 82, "stressScore": 65, "mws": 87, "pregnancyWeek": 24 }
+}
+```
+
+---
+
+## React Native setup
+
+1. Copy `exerciseService.js` → `src/services/exerciseService.js`
+2. Copy `ExerciseScreen.jsx` → `src/screens/ExerciseScreen.jsx`
+3. Copy `ChatScreen.jsx` → `src/screens/ChatScreen.jsx`
+
+4. Update `BASE_URL` in `exerciseService.js`:
+
+| Testing on | BASE_URL value |
+|---|---|
+| Android emulator | `http://10.0.2.2:3000` |
+| iOS simulator | `http://localhost:3000` |
+| Physical device | `http://<your-computer-IP>:3000` |
+
+Find your IP: `ipconfig` on Windows · `ifconfig` on Mac/Linux
+
+5. Add screens to your navigation:
+```javascript
+// In your Navigator file
+import ExerciseScreen from "../screens/ExerciseScreen";
+import ChatScreen from "../screens/ChatScreen";
+
+<Stack.Screen name="Exercise" component={ExerciseScreen} />
+<Stack.Screen name="Chat" component={ChatScreen} />
+```
+
+6. Navigate and pass sensorData:
+```javascript
+// From anywhere in your app — pass the full processed sensor object
+navigation.navigate("Exercise", { sensorData: currentSensorState });
+navigation.navigate("Chat", { sensorData: currentSensorState });
+
+// Or if using global state / context:
+// ExerciseScreen receives sensorData as a prop directly from your store
+```
+
+---
+
+## Decision logic — when is each exercise triggered?
+
+| Condition | Exercise category shown |
+|---|---|
+| fallDetected = true | Recovery & Rest only (emergency mode) |
+| heartRate ≥ 110 OR temperature ≥ 37.8°C | Recovery & Rest only |
+| stressScore ≥ 70 | Stress Relief first |
+| stressScore ≥ 45 | Stress Relief |
+| activityIndex ≤ 0.05 | Light Activity + Stretching |
+| activityIndex ≤ 0.15 | Stretching + Light Activity |
+| sitting ≥ 30 min OR posture not "Standing" | Posture Correction |
+| sleepScore < 60 | Recovery & Rest |
+| pregnancyWeek ≥ 28 | Mobility added |
+| mws < 60 | Recovery & Rest |
+| Every day, all trimesters | Pelvic Floor always |
+| All vitals normal | Mobility + Pelvic Floor |
+
+To tune thresholds: edit `THRESHOLDS` object in `controllers/exerciseController.js`
+
+---
+
+## Git — push to your branch
+
+```bash
+git checkout -b feature/exercise-recommendation
+
+git add exercise-api/
+git commit -m "feat: add exercise recommendation and AI chat backend"
+
+# React Native files
+git add src/services/exerciseService.js
+git add src/screens/ExerciseScreen.jsx
+git add src/screens/ChatScreen.jsx
+git commit -m "feat: add exercise and chat screens to React Native"
+
+git push origin feature/exercise-recommendation
+```
+
+---
+
+## input data
+
+
+
+| Field | Type | Calculated by |
+|---|---|---|
+| heartRate | number BPM | Peak detection on MAX30102 IR signal |
+| spo2 | number % | Red/IR ratio formula on MAX30102 |
+| temperature | number °C | Moving average of DS18B20 |
+| hrv | number ms | RMSSD of RR intervals |
+| restingHR | number BPM | HR averaged when MPU6500 detects no movement |
+| gsrConductance | number µS | Converted from GSR ADC reading |
+| stressScore | number 0–100 | 0.7×GSR + 0.3×(1–HRV) normalised |
+| activityIndex | number 0–1 | sum\|A–1g\|/N from accelerometer |
+| sleepScore | number 0–100 | 100 – (movement + stress penalty) |
+| posture | string | atan2 roll/pitch from MPU6500 |
+| fallDetected | boolean | Free fall < 0.5g then impact > 2.5g |
+| bellyExpansion | number % | Flex sensor vs calibration baseline |
+| mws | number 0–100 | Weighted formula across all vitals |
+
+
