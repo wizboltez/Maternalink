@@ -31,19 +31,19 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
   const cardWidth = isTablet ? 300 : (width - Theme.spacing.xl * 2 - Theme.spacing.md) / 2;
 
   // Demo state values
-  const [heartRate] = useState(78);
-  const [hrStatus] = useState<HealthStatus>('normal');
-  const [spO2] = useState(97);
-  const [spO2Status] = useState<HealthStatus>('normal');
-  const [temperature] = useState(36.8);
-  const [tempStatus] = useState<HealthStatus>('normal');
-  const [stressScore] = useState(32);
-  const [stressStatus] = useState<HealthStatus>('normal');
-  const [activity] = useState('sitting');
-  const [fallDetected] = useState(false);
-  const [contractionActive] = useState(false);
-  const [contractionFrequency] = useState(2);
-  const [isConnected] = useState(false);
+  const [heartRate, setHeartRate] = useState(78);
+  const [hrStatus, setHrStatus] = useState<HealthStatus>('normal');
+  const [spO2, setSpO2] = useState(97);
+  const [spO2Status, setSpO2Status] = useState<HealthStatus>('normal');
+  const [temperature, setTemperature] = useState(36.8);
+  const [tempStatus, setTempStatus] = useState<HealthStatus>('normal');
+  const [stressScore, setStressScore] = useState(32);
+  const [stressStatus, setStressStatus] = useState<HealthStatus>('normal');
+  const [activity, setActivity] = useState('sitting');
+  const [fallDetected, setFallDetected] = useState(false);
+  const [contractionActive, setContractionActive] = useState(false);
+  const [contractionFrequency, setContractionFrequency] = useState(2);
+  const [isConnected, setIsConnected] = useState(true);
 
   // Pulsing animation for heart rate card
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -66,6 +66,93 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
     pulse.start();
     return () => pulse.stop();
   }, [pulseAnim]);
+
+  // Periodic simulation effect for prototype/demo showcase
+  useEffect(() => {
+    const activities = ['sitting', 'lying', 'standing', 'walking'];
+    let currentIndex = 0;
+
+    const interval = setInterval(() => {
+      // Cycle through activities for demonstration
+      currentIndex = (currentIndex + 1) % activities.length;
+      const currentActivity = activities[currentIndex];
+      setActivity(currentActivity);
+
+      let newHeartRate = 78;
+      let newSpO2 = 97;
+      let newTemp = 36.8;
+      let newStress = 32;
+
+      if (currentActivity === 'sitting' || currentActivity === 'lying') {
+        // Resting/At Rest Vitals
+        newHeartRate = Math.floor(Math.random() * (90 - 65 + 1)) + 65; // 65-90 bpm (Resting range: 60-100)
+        newSpO2 = Math.floor(Math.random() * (100 - 96 + 1)) + 96; // 96-100% (At Rest range: 95-100)
+        newTemp = Number((Math.random() * (36.9 - 36.2) + 36.2).toFixed(1)); // 36.2-36.9 °C (Normal range)
+        newStress = Math.floor(Math.random() * (35 - 15 + 1)) + 15; // low/normal stress
+      } else if (currentActivity === 'standing') {
+        // Light Activity
+        newHeartRate = Math.floor(Math.random() * (105 - 75 + 1)) + 75; // 75-105 bpm (< 50-60% max)
+        newSpO2 = Math.floor(Math.random() * (100 - 95 + 1)) + 95; // 95-100% (Light Activity range: 95-100)
+        newTemp = Number((Math.random() * (37.1 - 36.3) + 36.3).toFixed(1)); // 36.3-37.1 °C
+        newStress = Math.floor(Math.random() * (45 - 20 + 1)) + 20; // light stress
+      } else if (currentActivity === 'walking') {
+        // Moderate Activity
+        newHeartRate = Math.floor(Math.random() * (130 - 95 + 1)) + 95; // 95-130 bpm (50%-70% max)
+        newSpO2 = Math.floor(Math.random() * (98 - 94 + 1)) + 94; // 94-98% (Moderate Activity range: 94-98)
+        newTemp = Number((Math.random() * (37.2 - 36.5) + 36.5).toFixed(1)); // 36.5-37.2 °C
+        newStress = Math.floor(Math.random() * (60 - 30 + 1)) + 30; // moderate stress
+      }
+
+      setHeartRate(newHeartRate);
+      setSpO2(newSpO2);
+      setTemperature(newTemp);
+      setStressScore(newStress);
+
+      // Dynamically calculate status categories based on values
+      if (newHeartRate >= 120) {
+        setHrStatus('attention');
+      } else {
+        setHrStatus('normal');
+      }
+
+      if (newSpO2 < 94) {
+        setSpO2Status('attention');
+      } else {
+        setSpO2Status('normal');
+      }
+
+      if (newTemp >= 38.0 || newTemp <= 35.0) {
+        setTempStatus('urgent');
+      } else if (newTemp >= 37.3 || newTemp <= 36.0) {
+        setTempStatus('attention');
+      } else {
+        setTempStatus('normal');
+      }
+
+      if (newStress >= 70) {
+        setStressStatus('urgent');
+      } else if (newStress >= 45) {
+        setStressStatus('attention');
+      } else {
+        setStressStatus('normal');
+      }
+
+      // Simulate occasional contraction changes
+      const shouldTriggerContraction = Math.random() < 0.25;
+      setContractionActive(shouldTriggerContraction);
+      if (shouldTriggerContraction) {
+        setContractionFrequency(Math.floor(Math.random() * (5 - 1 + 1)) + 1);
+      } else {
+        setContractionFrequency(Math.floor(Math.random() * 2));
+      }
+
+      // Maintain connection (stays connected 95% of the time in simulation)
+      setIsConnected(Math.random() < 0.95);
+
+    }, 30000); // Trigger changes every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const activityLabel = (act: string): string => {
     const labels: Record<string, string> = {
