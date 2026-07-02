@@ -40,7 +40,7 @@ npm install
 
 # Create .env file from template
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and add your GROQ_API_KEY (get a key from https://console.groq.com)
 
 npm run dev      # development — auto-reloads on save
 npm start        # production
