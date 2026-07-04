@@ -149,3 +149,9 @@ The backend uses MongoDB (via Mongoose) to store persistent data.
 }
 ```
 *(Note: High-frequency raw sensor data is processed on the phone to save bandwidth; only the aggregated 100-second means and significant events like contractions are synced to the cloud).*
+
+<p align="center">
+  <a href="[https://youtube.com](https://youtu.be/v8hrP4hYiIg?si=VnOevk5WMbC96dpz)">
+    <img src="https://youtu.be/v8hrP4hYiIg?si=VnOevk5WMbC96dpz" alt="Watch the video" width="70%">
+  </a>
+</p>
