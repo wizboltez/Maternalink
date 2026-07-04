@@ -2,13 +2,14 @@
 
 Welcome to the Maternalink project! This document serves as the complete technical handover guide, detailing the folder structure, setup instructions, feature logic, API integrations, and database schemas.
 <div align="center">
-    <h2>Watch demo</h2>
-<p align="center">
-  <a href="[https://youtube.com](https://youtu.be/v8hrP4hYiIg?si=VnOevk5WMbC96dpz)">
-    <img src="docs/T4T hackathon .jpg" alt="Watch the video" width="70%">
+  <h2>Watch demo</h2>
+  <a href="https://www.youtube.com/watch?v=v8hrP4hYiIg" target="_blank">
+    <img src="docs/T4T%20hackathon%20.jpg" alt="Watch the video" width="70%">
   </a>
-</p>
 </div>
+
+
+
 
 ## 📁 Folder Structure
 
