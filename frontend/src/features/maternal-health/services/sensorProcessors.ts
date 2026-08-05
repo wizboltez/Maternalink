@@ -25,50 +25,10 @@ export class HeartRateProcessor {
    * If heartRate is provided directly, it is smoothed and returned.
    * If only irValue is provided, BPM is estimated via peak detection.
    */
-  process(heartRate: number | undefined, irValue?: number): { bpm: number; status: HealthStatus } | null {
-    // Direct heart rate value from sensor
-    if (heartRate != null && heartRate > 0) {
-      this.bpmBuffer.push(heartRate);
-      if (this.bpmBuffer.length > this.bpmSmoothing) this.bpmBuffer.shift();
-      const smoothed = Math.round(this.bpmBuffer.reduce((a, b) => a + b, 0) / this.bpmBuffer.length);
-      return { bpm: smoothed, status: this.classifyBpm(smoothed) };
+  process(heartRate: number | undefined, heartRateValid?: number): { bpm: number; status: HealthStatus } | null {
+    if (heartRate != null && heartRate > 0 && heartRateValid === 1) {
+      return { bpm: heartRate, status: this.classifyBpm(heartRate) };
     }
-
-    // Estimate BPM from IR signal (peak-to-peak interval detection)
-    if (irValue != null && irValue > 0) {
-      this.irBuffer.push(irValue);
-      if (this.irBuffer.length > this.irWindowSize) this.irBuffer.shift();
-      if (this.irBuffer.length < 5) return null;
-
-      // Simple peak detection: current value is a local maximum
-      const len = this.irBuffer.length;
-      const prev = this.irBuffer[len - 2] ?? 0;
-      const curr = this.irBuffer[len - 1];
-      const mean = this.irBuffer.reduce((a, b) => a + b, 0) / len;
-
-      // Detect peaks above the mean
-      if (curr > prev && curr > mean && this.lastIr <= prev) {
-        const now = Date.now();
-        if (this.lastPeakTime > 0) {
-          const intervalMs = now - this.lastPeakTime;
-          if (intervalMs > 300 && intervalMs < 2000) { // 30-200 BPM range
-            const instantBpm = Math.round(60000 / intervalMs);
-            this.bpmBuffer.push(instantBpm);
-            if (this.bpmBuffer.length > this.bpmSmoothing) this.bpmBuffer.shift();
-          }
-        }
-        this.lastPeakTime = now;
-      }
-      this.lastIr = curr;
-
-      if (this.bpmBuffer.length > 0) {
-        const smoothed = Math.round(this.bpmBuffer.reduce((a, b) => a + b, 0) / this.bpmBuffer.length);
-        return { bpm: smoothed, status: this.classifyBpm(smoothed) };
-      }
-
-      return null;
-    }
-
     return null;
   }
 
@@ -92,49 +52,14 @@ export class SpO2Estimator {
    * If Red is not available, estimates SpO2 from IR signal variability alone
    * using a simplified perfusion-index approach.
    */
-  process(irValue: number | undefined, redValue: number | undefined): { spO2: number; status: HealthStatus } | null {
-    if (irValue == null || irValue <= 0) return null;
-
-    this.irBuffer.push(irValue);
-    if (this.irBuffer.length > this.windowSize) this.irBuffer.shift();
-    if (this.irBuffer.length < 3) return null;
-
-    // Compute AC and DC components for IR
-    const irDC = this.irBuffer.reduce((a, b) => a + b, 0) / this.irBuffer.length;
-    const irAC = Math.max(...this.irBuffer) - Math.min(...this.irBuffer);
-    if (irDC === 0) return null;
-
-    let spO2: number;
-
-    if (redValue != null && redValue > 0) {
-      // Full R-ratio calculation when both IR and Red are available
-      this.redBuffer.push(redValue);
-      if (this.redBuffer.length > this.windowSize) this.redBuffer.shift();
-
-      const redDC = this.redBuffer.reduce((a, b) => a + b, 0) / this.redBuffer.length;
-      const redAC = Math.max(...this.redBuffer) - Math.min(...this.redBuffer);
-      if (redDC === 0) return null;
-
-      const R = (redAC / redDC) / (irAC / irDC || 1);
-      spO2 = Math.round(Math.max(0, Math.min(100, 110 - 25 * R)));
-    } else {
-      // IR-only estimation: use perfusion index (PI = irAC / irDC * 100)
-      // Higher PI generally correlates with good perfusion and SpO2 > 95%
-      const PI = (irAC / irDC) * 100;
-      // Empirical mapping: healthy PI (0.5-5%) → SpO2 94-99%
-      if (PI > 0.3) {
-        spO2 = Math.round(Math.min(99, Math.max(90, 94 + PI * 1.2)));
-      } else {
-        // Very low perfusion — finger may not be placed correctly
-        spO2 = 95; // default to healthy estimate
-      }
+  process(spo2: number | undefined, spo2Valid?: number): { spO2: number; status: HealthStatus } | null {
+    if (spo2 != null && spo2 > 0 && spo2Valid === 1) {
+      let status: HealthStatus = 'normal';
+      if (spo2 < 92) status = 'urgent';
+      else if (spo2 < 95) status = 'attention';
+      return { spO2: spo2, status };
     }
-
-    let status: HealthStatus = 'normal';
-    if (spO2 < 92) status = 'urgent';
-    else if (spO2 < 95) status = 'attention';
-
-    return { spO2, status };
+    return null;
   }
 
   reset() { this.irBuffer = []; this.redBuffer = []; }

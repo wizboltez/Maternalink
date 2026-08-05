@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import { env } from './config/env';
-import { User, EmergencyContacts } from './infrastructure/database/models';
-import { EmergencyService } from './application/services/EmergencyService';
+import { env } from '../src/config/env';
+import { User, EmergencyContacts } from '../src/infrastructure/database/models';
+import { EmergencyService } from '../src/application/services/EmergencyService';
 
 async function main() {
   try {

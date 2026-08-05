@@ -1,8 +1,8 @@
-import { SignalProcessorService, DetectionConfig } from './SignalProcessorService';
-import { ICalibrationSession } from '../../infrastructure/database/models';
+import { SignalProcessorService, DetectionConfig } from '../../../src/application/services/SignalProcessorService';
+import { ICalibrationSession } from '../../../src/infrastructure/database/models';
 
 // Mock mongoose models used in SignalProcessorService
-jest.mock('../../infrastructure/database/models', () => {
+jest.mock('../../../src/infrastructure/database/models', () => {
   return {
     ContractionReading: {
       findOne: jest.fn().mockImplementation(() => ({

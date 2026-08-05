@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
+import { useMaternalHealth } from '../hooks/useMaternalHealth';
 
 type HealthStatus = 'normal' | 'attention' | 'urgent';
 
@@ -30,20 +31,26 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
   const isTablet = width > 768;
   const cardWidth = isTablet ? 300 : (width - Theme.spacing.xl * 2 - Theme.spacing.md) / 2;
 
-  // Demo state values
-  const [heartRate] = useState(78);
-  const [hrStatus] = useState<HealthStatus>('normal');
-  const [spO2] = useState(97);
-  const [spO2Status] = useState<HealthStatus>('normal');
-  const [temperature] = useState(36.8);
-  const [tempStatus] = useState<HealthStatus>('normal');
-  const [stressScore] = useState(32);
-  const [stressStatus] = useState<HealthStatus>('normal');
-  const [activity] = useState('sitting');
-  const [fallDetected] = useState(false);
-  const [contractionActive] = useState(false);
-  const [contractionFrequency] = useState(2);
-  const [isConnected] = useState(false);
+  const {
+    isConnected,
+    heartRate: hrVal,
+    heartRateStatus: hrStatus,
+    spO2: spO2Val,
+    spO2Status,
+    temperature: tempVal,
+    temperatureStatus: tempStatus,
+    stressScore: stressVal,
+    stressStatus,
+    activity,
+    fallDetected,
+    contractionActive,
+    contractionFrequency
+  } = useMaternalHealth();
+
+  const heartRate = hrVal ?? '--';
+  const spO2 = spO2Val ?? '--';
+  const temperature = tempVal ?? '--';
+  const stressScore = stressVal ?? '--';
 
   // Pulsing animation for heart rate card
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -163,7 +170,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
             <Caption style={styles.cardLabel}>Body Temp</Caption>
           </View>
           <Text style={[styles.cardValue, { color: statusColor(tempStatus) }]}>
-            {temperature.toFixed(1)}°C
+            {typeof temperature === 'number' ? temperature.toFixed(1) : temperature}°C
           </Text>
           <Caption style={styles.cardUnit}>Celsius</Caption>
         </TouchableOpacity>
@@ -188,7 +195,7 @@ const HealthDashboardScreen: React.FC<{ navigation: any; route?: any }> = ({ nav
                 style={[
                   styles.gaugeFill,
                   {
-                    width: `${Math.min(stressScore, 100)}%`,
+                    width: `${Math.min(typeof stressScore === 'number' ? stressScore : 0, 100)}%`,
                     backgroundColor: statusColor(stressStatus),
                   },
                 ]}

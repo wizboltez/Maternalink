@@ -1,8 +1,8 @@
-import { PregnancyProfileController } from './PregnancyProfileController';
-import { GuidanceController } from './GuidanceController';
-import { PregnancyProfile, GuidanceRule } from '../../infrastructure/database/models';
+import { PregnancyProfileController } from '../../../src/presentation/controllers/PregnancyProfileController';
+import { GuidanceController } from '../../../src/presentation/controllers/GuidanceController';
+import { PregnancyProfile, GuidanceRule } from '../../../src/infrastructure/database/models';
 
-jest.mock('../../infrastructure/database/models', () => ({
+jest.mock('../../../src/infrastructure/database/models', () => ({
   PregnancyProfile: {
     findOne: jest.fn(),
   },

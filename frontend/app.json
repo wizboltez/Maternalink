@@ -1,4 +1,46 @@
 {
   "name": "Maternalink",
-  "displayName": "Maternalink"
+  "displayName": "Maternalink",
+  "expo": {
+    "name": "Maternalink",
+    "slug": "maternalink",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.maternalink.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "bluetooth-central"
+        ]
+      }
+    },
+    "android": {
+      "package": "com.maternalink.app",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "Allow Maternalink to connect to your Smart Belt via Bluetooth."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3a47e0f1-dd72-4493-8215-8260bde9543d"
+      }
+    },
+    "jsEngine": "jsc"
+  }
 }

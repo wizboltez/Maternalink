@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import { env } from './config/env';
-import { User, EmergencyContacts, EmergencySettings, EmergencyAlert } from './infrastructure/database/models';
-import { AlertEngine } from './application/services/AlertEngine';
-import { EmergencyService } from './application/services/EmergencyService';
+import { env } from '../src/config/env';
+import { User, EmergencyContacts, EmergencySettings, EmergencyAlert } from '../src/infrastructure/database/models';
+import { AlertEngine } from '../src/application/services/AlertEngine';
+import { EmergencyService } from '../src/application/services/EmergencyService';
 
 async function simulate() {
   try {

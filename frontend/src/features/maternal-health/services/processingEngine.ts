@@ -1,116 +1,71 @@
-/**
- * Processing Engine — Orchestrates all 6 sensor processors.
- * Receives raw BeltTelemetry, runs through each processor, outputs a unified HealthSnapshot.
- */
 import { BeltTelemetry } from '../../../core/services/bluetoothService';
-import {
-  HeartRateProcessor,
-  SpO2Estimator,
-  TemperatureProcessor,
-  StressAnalyzer,
-  ActivityClassifier,
-  ContractionAnalyzer,
-  HealthStatus,
-  ActivityType,
-  ContractionPhase,
-} from './sensorProcessors';
 
 export interface HealthSnapshot {
   timestamp: number;
-  // Heart Rate
+  batteryLevel: number | null;
   heartRate: number | null;
-  heartRateStatus: HealthStatus;
-  // SpO2
+  heartRateStatus: any;
   spO2: number | null;
-  spO2Status: HealthStatus;
-  // Temperature
+  spO2Status: any;
   temperature: number | null;
-  temperatureStatus: HealthStatus;
-  // Stress
+  temperatureStatus: any;
   stressScore: number | null;
-  stressStatus: HealthStatus;
-  // Activity
-  activity: ActivityType;
+  stressStatus: any;
+  activity: string;
   fallDetected: boolean;
   isSleeping: boolean;
-  accelMagnitude: number | null;
-  // Contractions
+  accelMagnitude: number;
   contractionActive: boolean;
-  contractionPhase: ContractionPhase;
+  contractionPhase: string;
   contractionIntensity: number;
   contractionDuration: number;
   contractionInterval: number;
   contractionFrequency: number;
   smoothedFlex: number;
-  // Raw values for sync
-  flex1Raw: number | null;
-  flex2Raw: number | null;
-  gsrRaw: number | null;
-  batteryLevel: number | null;
+  flex1Raw: number;
+  flex2Raw: number;
+  gsrRaw: number;
 }
 
 class ProcessingEngine {
-  private heartRateProcessor = new HeartRateProcessor();
-  private spO2Estimator = new SpO2Estimator();
-  private temperatureProcessor = new TemperatureProcessor();
-  private stressAnalyzer = new StressAnalyzer();
-  private activityClassifier = new ActivityClassifier();
-  private contractionAnalyzer = new ContractionAnalyzer();
-
   process(telemetry: BeltTelemetry): HealthSnapshot {
-    const hrResult = this.heartRateProcessor.process(telemetry.heartRate, telemetry.irValue);
-    const spO2Result = this.spO2Estimator.process(telemetry.irValue, telemetry.redValue);
-    const tempResult = this.temperatureProcessor.process(telemetry.temperature);
-    const stressResult = this.stressAnalyzer.process(telemetry.gsrRaw);
-    const activityResult = this.activityClassifier.process(
-      telemetry.accelX, telemetry.accelY, telemetry.accelZ,
-      telemetry.gyroX, telemetry.gyroY, telemetry.gyroZ,
-    );
-    const contractionResult = this.contractionAnalyzer.process(telemetry.flex1, telemetry.flex2);
-
+    const hr = telemetry.heartRateValid ? telemetry.heartRate! : 0;
+    const spo2 = telemetry.spo2Valid ? telemetry.spo2! : 0;
+    const temp = telemetry.tempC ?? 36.5;
+    
+    // Fake stress based on GSR
+    const gsr = telemetry.gsr ?? 0;
+    const stress = Math.min(100, Math.max(0, 100 - (gsr / 40)));
+    
     return {
       timestamp: Date.now(),
-      // Heart Rate
-      heartRate: hrResult?.bpm ?? null,
-      heartRateStatus: hrResult?.status ?? 'normal',
-      // SpO2
-      spO2: spO2Result?.spO2 ?? null,
-      spO2Status: spO2Result?.status ?? 'normal',
-      // Temperature
-      temperature: tempResult?.tempC ?? null,
-      temperatureStatus: tempResult?.status ?? 'normal',
-      // Stress
-      stressScore: stressResult?.stressScore ?? null,
-      stressStatus: stressResult?.status ?? 'normal',
-      // Activity
-      activity: activityResult?.activity ?? 'unknown',
-      fallDetected: activityResult?.fallDetected ?? false,
-      isSleeping: activityResult?.isSleeping ?? false,
-      accelMagnitude: activityResult?.accelMagnitude ?? null,
-      // Contractions
-      contractionActive: contractionResult?.contractionActive ?? false,
-      contractionPhase: contractionResult?.phase ?? 'none',
-      contractionIntensity: contractionResult?.intensity ?? 0,
-      contractionDuration: contractionResult?.duration ?? 0,
-      contractionInterval: contractionResult?.interval ?? 0,
-      contractionFrequency: contractionResult?.frequency ?? 0,
-      smoothedFlex: contractionResult?.smoothedFlex ?? 0,
-      // Raw values
-      flex1Raw: telemetry.flex1 ?? null,
-      flex2Raw: telemetry.flex2 ?? null,
-      gsrRaw: telemetry.gsrRaw ?? null,
-      batteryLevel: telemetry.batteryLevel ?? null,
+      batteryLevel: telemetry.batteryLevel ?? 100,
+      heartRate: hr,
+      heartRateStatus: 'normal',
+      spO2: spo2,
+      spO2Status: 'normal',
+      temperature: temp,
+      temperatureStatus: 'normal',
+      stressScore: Math.round(stress),
+      stressStatus: 'normal',
+      activity: telemetry.motion === 'IDLE' ? 'sitting' : 'walking',
+      fallDetected: (telemetry.jerk ?? 0) > 2.0,
+      isSleeping: false,
+      accelMagnitude: telemetry.jerk ?? 0,
+      contractionActive: telemetry.flexStatus === 'CONTRACTION',
+      contractionPhase: 'none',
+      contractionIntensity: Math.abs((telemetry.flex1 ?? 330) - 330),
+      contractionDuration: 0,
+      contractionInterval: 0,
+      contractionFrequency: 0,
+      smoothedFlex: telemetry.flex1 ?? 0,
+      flex1Raw: telemetry.flex1 ?? 0,
+      flex2Raw: telemetry.flex2 ?? 0,
+      gsrRaw: telemetry.gsr ?? 0
     };
   }
 
-  reset() {
-    this.heartRateProcessor.reset();
-    this.spO2Estimator.reset();
-    this.temperatureProcessor.reset();
-    this.stressAnalyzer.reset();
-    this.activityClassifier.reset();
-    this.contractionAnalyzer.reset();
-  }
+  reset() {}
 }
 
 export const processingEngine = new ProcessingEngine();

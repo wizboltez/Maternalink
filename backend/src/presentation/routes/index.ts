@@ -20,7 +20,7 @@ import {
   postReadingSchema,
   createProfileSchema,
   updateProfileSchema,
-  healthSyncSchema,
+  // healthSyncSchema,
 } from './schemas';
 
 const router = Router();
@@ -62,7 +62,7 @@ router.get('/monitoring/export/pdf-all', authMiddleware as any, MonitoringContro
 router.use('/emergency', emergencyRouter);
 
 // --- Health Sync Routes ---
-router.post('/health/sync', authMiddleware as any, validate(healthSyncSchema), HealthSyncController.syncBatch);
+// router.post('/health/sync', authMiddleware as any, validate(healthSyncSchema), HealthSyncController.syncBatch);
 router.get('/health/history', authMiddleware as any, HealthSyncController.getHistory);
 router.get('/health/latest', authMiddleware as any, HealthSyncController.getLatest);
 router.get('/health/batch/:batchId', authMiddleware as any, HealthSyncController.getBatchDetails);

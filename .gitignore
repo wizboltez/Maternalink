@@ -62,3 +62,12 @@ coverage/
 .cache/
 tmp/
 temp/
+
+# --- JDK & Build logs ---
+frontend/jdk-*/
+frontend/openjdk-*.tar.gz
+frontend/eas_log.txt
+
+# --- Releases & APKs ---
+releases/
+

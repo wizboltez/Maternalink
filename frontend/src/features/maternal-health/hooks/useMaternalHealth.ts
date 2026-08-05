@@ -122,13 +122,13 @@ export const useMaternalHealth = () => {
       const threeMinsAgo = now - 180000;
       snapshotBufferRef.current = snapshotBufferRef.current.filter(s => s.timestamp >= threeMinsAgo);
 
-      // Check if 2 minutes (120000 ms) have passed since last refresh
-      if (now - lastRefreshTimeRef.current >= 120000) {
+      // Update UI every 2 seconds to keep it live but performant
+      if (now - lastRefreshTimeRef.current >= 2000) {
         lastRefreshTimeRef.current = now;
 
-        // Take entries from the last 1min 40sec (100 seconds)
-        const hundredSecsAgo = now - 100000;
-        const targetSnapshots = snapshotBufferRef.current.filter(s => s.timestamp >= hundredSecsAgo);
+        // Take entries from the last 2 seconds
+        const twoSecsAgo = now - 2000;
+        const targetSnapshots = snapshotBufferRef.current.filter(s => s.timestamp >= twoSecsAgo);
 
         if (targetSnapshots.length > 0) {
           // Calculate mean snapshot

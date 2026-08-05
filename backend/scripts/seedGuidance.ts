@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { env } from './config/env';
-import { GuidanceRule } from './infrastructure/database/models';
+import { env } from '../src/config/env';
+import { GuidanceRule } from '../src/infrastructure/database/models';
 
 const seedData = [
   {

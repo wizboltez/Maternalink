@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { env } from './config/env';
-import { User, PregnancyProfile } from './infrastructure/database/models';
+import { env } from '../src/config/env';
+import { User, PregnancyProfile } from '../src/infrastructure/database/models';
 
 async function check() {
   try {

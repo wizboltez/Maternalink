@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, Alert, TextInput } from 'react-native';
 import Theme from '../../../core/theme/theme';
 import { Heading, Subheading, BodyText, Caption } from '../../../core/components/Typography';
 import { Card } from '../../../core/components/Card';
@@ -23,6 +23,7 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
   const [activeBeltId, setActiveBeltId] = useState<string | null>(null);
   const [activeBackendId, setActiveBackendId] = useState<string | null>(null);
   const [bleConnected, setBleConnected] = useState(false);
+  const [manualMac, setManualMac] = useState('B0:CB:D8:0A:88:1A');
 
   const loadSavedBelts = useCallback(async () => {
     const belts = await getSavedBelts();
@@ -42,6 +43,27 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
     setScannedDevices([]);
     try {
       const devices = await bluetoothService.scanAllDevices(12000);
+      
+      // Sort devices: Belts/Maternalink first, then named devices, then Unknown Devices
+      devices.sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        
+        const aIsBelt = aName.includes('maternal') || aName.includes('belt') || aName.includes('beld');
+        const bIsBelt = bName.includes('maternal') || bName.includes('belt') || bName.includes('beld');
+        
+        if (aIsBelt && !bIsBelt) return -1;
+        if (!aIsBelt && bIsBelt) return 1;
+        
+        const aIsUnknown = aName === 'unknown device';
+        const bIsUnknown = bName === 'unknown device';
+        
+        if (aIsUnknown && !bIsUnknown) return 1;
+        if (!aIsUnknown && bIsUnknown) return -1;
+        
+        return a.name.localeCompare(b.name);
+      });
+      
       setScannedDevices(devices);
       if (devices.length === 0) {
         Alert.alert(
@@ -59,7 +81,7 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
   const connectBelt = async (device: { id: string; name: string; type: SavedBelt['type'] }) => {
     setConnectingId(device.id);
     try {
-      await bluetoothService.connectByAddress(device.id, device.name);
+      await bluetoothService.connectByAddress(device.id, device.name, device.type);
       const battery = await bluetoothService.readBatteryLevel();
 
       let backendDeviceId: string | undefined;
@@ -172,7 +194,10 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
         <View style={styles.deviceHeader}>
           <View>
             <Subheading style={styles.deviceName}>{item.name}</Subheading>
-            <Caption>{item.address} · {item.type.toUpperCase()}</Caption>
+            <Caption>
+              {item.address} · {item.type.toUpperCase()}
+              {item.rssi ? ` · Signal: ${item.rssi} dBm` : ''}
+            </Caption>
           </View>
           {alreadySaved && (
             <Caption style={styles.savedHint}>Previously connected</Caption>
@@ -203,6 +228,21 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
           onPress={handleScan}
           loading={scanning}
         />
+        <View style={styles.manualConnectSection}>
+          <TextInput
+            style={styles.macInput}
+            value={manualMac}
+            onChangeText={setManualMac}
+            placeholder="Enter MAC Address"
+            placeholderTextColor={Theme.colors.textSecondary}
+          />
+          <Button
+            title={connectingId === manualMac ? 'Connecting...' : 'Force Connect by MAC'}
+            variant="outline"
+            onPress={() => connectBelt({ id: manualMac, name: 'Manual ESP32', type: 'ble' })}
+            disabled={!manualMac || connectingId === manualMac}
+          />
+        </View>
       </View>
 
       <FlatList
@@ -262,6 +302,8 @@ const styles = StyleSheet.create({
   mainTitle: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs, lineHeight: 18 },
   scanSection: { paddingHorizontal: Theme.spacing.xl, marginBottom: Theme.spacing.md },
+  manualConnectSection: { marginTop: Theme.spacing.md, gap: Theme.spacing.sm },
+  macInput: { borderWidth: 1, borderColor: Theme.colors.divider, borderRadius: Theme.borders.radius.sm, padding: Theme.spacing.sm, color: Theme.colors.text, backgroundColor: Theme.colors.cardBackground },
   section: { paddingHorizontal: Theme.spacing.xl, marginBottom: Theme.spacing.sm },
   sectionLabel: { color: Theme.colors.text, marginBottom: Theme.spacing.sm },
   listContainer: { paddingBottom: 100 },

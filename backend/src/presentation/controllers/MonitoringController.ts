@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../infrastructure/web/middlewares';
-import { MonitoringSession, ContractionReading, CalibrationSession, Device } from '../../infrastructure/database/models';
+import { MonitoringSession, ContractionReading, IContractionReading, CalibrationSession, Device } from '../../infrastructure/database/models';
 import { SignalProcessorService } from '../../application/services/SignalProcessorService';
 import { ExportService } from '../../application/services/ExportService';
 import { SocketServer } from '../../infrastructure/socket/socketServer';
@@ -137,7 +137,7 @@ export class MonitoringController {
       const calibration = await CalibrationSession.findById(session.calibrationSessionId);
       if (!calibration) return res.status(404).json({ error: 'Calibration data missing for this session.' });
 
-      let readingData: Partial<ContractionReading>;
+      let readingData: Partial<IContractionReading>;
 
       if (source === 'manual') {
         // Manual Confirmation mode flow
