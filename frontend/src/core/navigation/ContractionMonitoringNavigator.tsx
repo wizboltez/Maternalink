@@ -12,10 +12,11 @@ import SessionSummaryScreen from '../../features/contraction-monitoring/screens/
 import SessionHistoryScreen from '../../features/contraction-monitoring/screens/SessionHistoryScreen';
 import AnalyticsScreen from '../../features/contraction-monitoring/screens/AnalyticsScreen';
 import SettingsScreen from '../../features/contraction-monitoring/screens/SettingsScreen';
+import QrScannerScreen from '../../features/contraction-monitoring/screens/QrScannerScreen';
 
 export type ContractionStackParamList = {
   MonitoringHome: undefined;
-  DeviceConnection: undefined;
+  DeviceConnection: { scannedDevice?: { id: string; name: string; type: 'ble' | 'classic' } } | undefined;
   CalibrationWizard: { deviceId: string };
   LiveMonitoring: { sessionId: string; deviceId: string; calibrationConfidence: number };
   ManualRecording: undefined;
@@ -23,6 +24,7 @@ export type ContractionStackParamList = {
   SessionHistory: undefined;
   Analytics: undefined;
   Settings: undefined;
+  QrScanner: undefined;
 };
 
 const Stack = createStackNavigator<ContractionStackParamList>();
@@ -60,6 +62,11 @@ export const ContractionMonitoringNavigator: React.FC = () => {
         name="DeviceConnection"
         component={DeviceConnectionScreen}
         options={{ title: 'Belt Connection' }}
+      />
+      <Stack.Screen
+        name="QrScanner"
+        component={QrScannerScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="CalibrationWizard"

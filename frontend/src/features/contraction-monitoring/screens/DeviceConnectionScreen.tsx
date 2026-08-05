@@ -15,7 +15,7 @@ import {
 } from '../../../core/services/beltHistoryService';
 import { formatSessionDate, formatClockTime } from '../../../core/utils/timeFormat';
 
-export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const DeviceConnectionScreen: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
   const [scanning, setScanning] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [savedBelts, setSavedBelts] = useState<SavedBelt[]>([]);
@@ -24,6 +24,29 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
   const [activeBackendId, setActiveBackendId] = useState<string | null>(null);
   const [bleConnected, setBleConnected] = useState(false);
   const [manualMac, setManualMac] = useState('B0:CB:D8:0A:88:1A');
+
+  // Handle scanned QR Code data
+  useEffect(() => {
+    if (route.params?.scannedDevice) {
+      const device = route.params.scannedDevice;
+      // Clear navigation parameter so it doesn't trigger again
+      navigation.setParams({ scannedDevice: undefined });
+      
+      Alert.alert(
+        'QR Code Detected',
+        `Do you want to connect to "${device.name}" (${device.id})?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Connect',
+            onPress: () => {
+              connectBelt(device);
+            },
+          },
+        ]
+      );
+    }
+  }, [route.params?.scannedDevice, navigation]);
 
   const loadSavedBelts = useCallback(async () => {
     const belts = await getSavedBelts();
@@ -223,11 +246,20 @@ export const DeviceConnectionScreen: React.FC<{ navigation: any }> = ({ navigati
       </View>
 
       <View style={styles.scanSection}>
-        <Button
-          title={scanning ? 'Scanning Classic + BLE...' : 'Scan for Bluetooth Devices'}
-          onPress={handleScan}
-          loading={scanning}
-        />
+        <View style={styles.scanButtonsRow}>
+          <Button
+            title={scanning ? 'Scanning...' : 'Scan Bluetooth'}
+            onPress={handleScan}
+            loading={scanning}
+            style={styles.scanBtn}
+          />
+          <Button
+            title="Scan QR Code"
+            variant="outline"
+            onPress={() => navigation.navigate('QrScanner')}
+            style={styles.scanBtn}
+          />
+        </View>
         <View style={styles.manualConnectSection}>
           <TextInput
             style={styles.macInput}
@@ -302,6 +334,8 @@ const styles = StyleSheet.create({
   mainTitle: { color: Theme.colors.primaryDark },
   subtitle: { color: Theme.colors.textSecondary, marginTop: Theme.spacing.xs, lineHeight: 18 },
   scanSection: { paddingHorizontal: Theme.spacing.xl, marginBottom: Theme.spacing.md },
+  scanButtonsRow: { flexDirection: 'row', gap: Theme.spacing.sm },
+  scanBtn: { flex: 1 },
   manualConnectSection: { marginTop: Theme.spacing.md, gap: Theme.spacing.sm },
   macInput: { borderWidth: 1, borderColor: Theme.colors.divider, borderRadius: Theme.borders.radius.sm, padding: Theme.spacing.sm, color: Theme.colors.text, backgroundColor: Theme.colors.cardBackground },
   section: { paddingHorizontal: Theme.spacing.xl, marginBottom: Theme.spacing.sm },

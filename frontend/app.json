@@ -34,6 +34,14 @@
           ],
           "bluetoothAlwaysPermission": "Allow Maternalink to connect to your Smart Belt via Bluetooth."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Maternalink to access your camera to scan belt QR codes.",
+          "microphonePermission": "Allow Maternalink to access your microphone.",
+          "barcodeScannerEnabled": true
+        }
       ]
     ],
     "extra": {
